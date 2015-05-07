@@ -17,7 +17,9 @@ public enum TerritoryOptions implements ConfigList {
 
 	ENFORCE("Enforcement Level", 0),
 	LOG("Logging Level", 4),
-	OVERLAY("Do in-zone overlay", true);
+	OVERLAY("Do in-zone overlay", true),
+	FADEOUT("Fade Overlay In and Out", false),
+	SMALLOVERLAY("Shrink Overlay", false);
 
 	private String label;
 	private boolean defaultState;

@@ -24,7 +24,7 @@ import net.minecraftforge.client.event.RenderWorldEvent;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
-import Reika.DragonAPI.Instantiable.Event.EntityRenderingLoopEvent;
+import Reika.DragonAPI.Instantiable.Event.Client.EntityRenderingLoopEvent;
 import Reika.DragonAPI.Libraries.IO.ReikaRenderHelper;
 import Reika.DragonAPI.Libraries.IO.ReikaTextureHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaGLHelper.BlendMode;
@@ -38,7 +38,10 @@ public class TerritoryOverlay {
 
 	public static final TerritoryOverlay instance = new TerritoryOverlay();
 
-	private int overlayAlpha = 255;
+	private static final boolean smallRender = TerritoryOptions.SMALLOVERLAY.getState();
+	private static final boolean fadeRender = TerritoryOptions.FADEOUT.getState();
+
+	private int overlayAlpha = 1024;
 	private int overlayAlphaDir = 0;
 
 	private TerritoryOverlay() {
@@ -134,6 +137,7 @@ public class TerritoryOverlay {
 			int z = MathHelper.floor_double(ep.posZ);
 
 
+			boolean flag = false;
 			FontRenderer fr = Minecraft.getMinecraft().fontRenderer;
 			for (Territory t : TerritoryCache.instance.getTerritories()) {
 				if (t.isInZone(ep.worldObj, ep)) {
@@ -158,6 +162,14 @@ public class TerritoryOverlay {
 						}
 					}
 					else {
+						flag = true;
+						GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+						GL11.glPushMatrix();
+						if (smallRender) {
+							double sz = 0.5;
+							GL11.glScaled(sz, sz, sz);
+							GL11.glTranslated(0, evt.resolution.getScaledHeight_double()*0.9, 0);
+						}
 						//fr.drawString(t.toString(), 0, 0, 0);
 						ReikaTextureHelper.bindTexture(TerritoryZone.class, "Textures/HUD.png");
 						GL11.glEnable(GL11.GL_BLEND);
@@ -167,25 +179,38 @@ public class TerritoryOverlay {
 						int dd = 16;
 						int dy = h-s-dd;
 
-						if (overlayAlpha >= 384)
-							overlayAlphaDir = -1;
-						else if (overlayAlpha == -256)
-							overlayAlphaDir = 1;
-						overlayAlpha += overlayAlphaDir;
+						if (fadeRender) {
+							int max = 8192;//384;
+							int min = -65536;//-256;
+							if (overlayAlpha >= max)
+								overlayAlphaDir = -1;
+							else if (overlayAlpha == min)
+								overlayAlphaDir = 1;
+							overlayAlpha += overlayAlphaDir;
+						}
 
-						Tessellator.instance.startDrawingQuads();
-						Tessellator.instance.setColorRGBA_I(0xffffff, overlayAlpha);
-						Tessellator.instance.addVertexWithUV(dd, dy+s, 0, 0, 1);
-						Tessellator.instance.addVertexWithUV(dd+s, dy+s, 0, 1, 1);
-						Tessellator.instance.addVertexWithUV(dd+s, dy, 0, 1, 0);
-						Tessellator.instance.addVertexWithUV(dd, dy, 0, 0, 0);
-						Tessellator.instance.draw();
-						GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-						fr.drawString("In zone owned by "+t.getOwnerNames()+"!", dd+s+4, dy+4, 0xffffff, true);
-						fr.drawString(t.getBoundsDesc(), dd+s+4, dy+4+fr.FONT_HEIGHT+2, 0xffffff, true);
-						fr.drawString("Do not mine or harvest without permission!", dd+s+4, dy+4+(fr.FONT_HEIGHT+2)*2, 0xffffff, true);
-						fr.drawString("Any actions you take here may be logged.", dd+s+4, dy+4+(fr.FONT_HEIGHT+2)*3, 0xffffff, true);
+						if (overlayAlpha >= 0) {
+							Tessellator.instance.startDrawingQuads();
+							Tessellator.instance.setColorRGBA_I(0xffffff, overlayAlpha);
+							Tessellator.instance.addVertexWithUV(dd, dy+s, 0, 0, 1);
+							Tessellator.instance.addVertexWithUV(dd+s, dy+s, 0, 1, 1);
+							Tessellator.instance.addVertexWithUV(dd+s, dy, 0, 1, 0);
+							Tessellator.instance.addVertexWithUV(dd, dy, 0, 0, 0);
+							Tessellator.instance.draw();
+							GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+						}
+
+						if ((overlayAlpha >= -1024 && overlayAlphaDir == -1) || overlayAlpha >= 0) {
+							fr.drawString("In zone owned by "+t.getOwnerNames()+"!", dd+s+4, dy+4, 0xffffff, true);
+							fr.drawString(t.getBoundsDesc(), dd+s+4, dy+4+fr.FONT_HEIGHT+2, 0xffffff, true);
+							fr.drawString("Do not mine or harvest without permission!", dd+s+4, dy+4+(fr.FONT_HEIGHT+2)*2, 0xffffff, true);
+							fr.drawString("Any actions you take here may be logged.", dd+s+4, dy+4+(fr.FONT_HEIGHT+2)*3, 0xffffff, true);
+						}
+
 						//break;
+
+						GL11.glPopAttrib();
+						GL11.glPopMatrix();
 					}
 
 					/*
@@ -233,6 +258,9 @@ public class TerritoryOverlay {
 				}
 			}
 
+			if (!flag || Keyboard.isKeyDown(Keyboard.KEY_TAB)) {
+				overlayAlpha = 4096;
+			}
 		}
 	}
 
