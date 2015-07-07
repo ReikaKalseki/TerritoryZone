@@ -29,6 +29,7 @@ import Reika.DragonAPI.Base.DragonAPIMod.LoadProfiler.LoadPhase;
 import Reika.DragonAPI.Instantiable.Event.PlayerPlaceBlockEvent;
 import Reika.DragonAPI.Instantiable.IO.ControlledConfig;
 import Reika.DragonAPI.Instantiable.IO.ModLogger;
+import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -45,7 +46,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 
 
-@Mod( modid = "TerritoryZone", name="TerritoryZone", version="Gamma", certificateFingerprint = "@GET_FINGERPRINT@", dependencies="required-after:DragonAPI")
+@Mod( modid = "TerritoryZone", name="TerritoryZone", certificateFingerprint = "@GET_FINGERPRINT@", dependencies="required-after:DragonAPI")
 
 public class TerritoryZone extends DragonAPIMod {
 
@@ -152,6 +153,8 @@ public class TerritoryZone extends DragonAPIMod {
 			ReikaJavaLibrary.dumpStack();
 			return;
 		}
+		else if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
+			return;
 		World world = ep.worldObj;
 		int x = ev.x;
 		int y = ev.y;
@@ -177,6 +180,8 @@ public class TerritoryZone extends DragonAPIMod {
 			ReikaJavaLibrary.dumpStack();
 			return;
 		}
+		else if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
+			return;
 		World world = ep.worldObj;
 		int x = ev.x;
 		int y = ev.y;
@@ -204,6 +209,8 @@ public class TerritoryZone extends DragonAPIMod {
 			ReikaJavaLibrary.dumpStack();
 			return;
 		}
+		else if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
+			return;
 		World world = ep.worldObj;
 		int x = ev.x;
 		int y = ev.y;
@@ -227,6 +234,8 @@ public class TerritoryZone extends DragonAPIMod {
 	public void track(LivingHurtEvent ev) {
 		if (!(ev.entityLiving instanceof EntityMob) && ev.source.getEntity() instanceof EntityPlayer) {
 			EntityPlayer ep = (EntityPlayer)ev.source.getEntity();
+			if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
+				return;
 			World world = ep.worldObj;
 			if (!world.isRemote) {
 				for (Territory t : TerritoryLoader.instance.getTerritories()) {
