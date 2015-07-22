@@ -18,7 +18,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import Reika.DragonAPI.Auxiliary.PacketTypes;
-import Reika.DragonAPI.Interfaces.IPacketHandler;
+import Reika.DragonAPI.Interfaces.PacketHandler;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper.DataPacket;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper.PacketObj;
@@ -26,7 +26,7 @@ import Reika.DragonAPI.Libraries.IO.ReikaSoundHelper;
 import Reika.RotaryCraft.Registry.SoundRegistry;
 import Reika.TerritoryZone.TerritoryDispatcher.PacketInfo;
 
-public class TerritoryPacketHandler implements IPacketHandler {
+public class TerritoryPacketHandler implements PacketHandler {
 
 	protected PacketInfo pack;
 

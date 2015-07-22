@@ -9,11 +9,10 @@
  ******************************************************************************/
 package Reika.TerritoryZone;
 
-import net.minecraftforge.common.config.Configuration;
-import Reika.DragonAPI.Exception.RegistrationException;
-import Reika.DragonAPI.Interfaces.ConfigList;
+import Reika.DragonAPI.Interfaces.Configuration.BooleanConfig;
+import Reika.DragonAPI.Interfaces.Configuration.IntegerConfig;
 
-public enum TerritoryOptions implements ConfigList {
+public enum TerritoryOptions implements IntegerConfig, BooleanConfig {
 
 	ENFORCE("Enforcement Level", 0),
 	LOG("Logging Level", 4),
@@ -25,7 +24,6 @@ public enum TerritoryOptions implements ConfigList {
 	private String label;
 	private boolean defaultState;
 	private int defaultValue;
-	private float defaultFloat;
 	private Class type;
 
 	public static final TerritoryOptions[] optionList = TerritoryOptions.values();
@@ -50,38 +48,12 @@ public enum TerritoryOptions implements ConfigList {
 		return type == int.class;
 	}
 
-	public boolean isDecimal() {
-		return type == float.class;
-	}
-
-	public float setDecimal(Configuration config) {
-		if (!this.isDecimal())
-			throw new RegistrationException(TerritoryZone.instance, "Config Property \""+this.getLabel()+"\" is not decimal!");
-		return (float)config.get("Control Setup", this.getLabel(), defaultFloat).getDouble(defaultFloat);
-	}
-
-	public float getFloat() {
-		return (Float)TerritoryZone.config.getControl(this.ordinal());
-	}
-
 	public Class getPropertyType() {
 		return type;
 	}
 
-	public int setValue(Configuration config) {
-		if (!this.isNumeric())
-			throw new RegistrationException(TerritoryZone.instance, "Config Property \""+this.getLabel()+"\" is not numerical!");
-		return config.get("Control Setup", this.getLabel(), defaultValue).getInt();
-	}
-
 	public String getLabel() {
 		return label;
-	}
-
-	public boolean setState(Configuration config) {
-		if (!this.isBoolean())
-			throw new RegistrationException(TerritoryZone.instance, "Config Property \""+this.getLabel()+"\" is not boolean!");
-		return config.get("Control Setup", this.getLabel(), defaultState).getBoolean(defaultState);
 	}
 
 	public boolean getState() {
@@ -104,11 +76,6 @@ public enum TerritoryOptions implements ConfigList {
 	@Override
 	public int getDefaultValue() {
 		return defaultValue;
-	}
-
-	@Override
-	public float getDefaultFloat() {
-		return defaultFloat;
 	}
 
 	@Override
