@@ -33,6 +33,7 @@ import Reika.DragonAPI.Instantiable.IO.ModLogger;
 import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
+import Reika.TerritoryZone.Territory.Protections;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
@@ -44,6 +45,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.PlayerEvent.ItemPickupEvent;
 import cpw.mods.fml.relauncher.Side;
 
 
@@ -149,7 +151,7 @@ public class TerritoryZone extends DragonAPIMod {
 	}
 
 	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void track(PlayerPlaceBlockEvent ev) {
+	public void trackPlace(PlayerPlaceBlockEvent ev) {
 		EntityPlayer ep = ev.player;
 		if (ep == null) {
 			TerritoryZone.logger.logError("Something tried a null-player interact event!");
@@ -165,9 +167,9 @@ public class TerritoryZone extends DragonAPIMod {
 		if (!world.isRemote) {
 			for (Territory t : TerritoryLoader.instance.getTerritories()) {
 				if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-					if (TerritoryOptions.enforceBlockPlace())
+					if (t.enforce(Protections.PLACE))
 						ev.setCanceled(true);
-					if (TerritoryOptions.logBlockPlace())
+					if (t.log(Protections.PLACE))
 						logger.log("Player "+ep.getCommandSenderName()+" used GUI at "+x+", "+y+", "+z+" in "+t);
 					break;
 				}
@@ -176,7 +178,7 @@ public class TerritoryZone extends DragonAPIMod {
 	}
 
 	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void track(PlayerInteractEvent ev) {
+	public void trackPlace(PlayerInteractEvent ev) {
 		EntityPlayer ep = ev.entityPlayer;
 		if (ep == null) {
 			TerritoryZone.logger.logError("Something tried a null-player interact event!");
@@ -193,9 +195,9 @@ public class TerritoryZone extends DragonAPIMod {
 			if (ev.action == Action.RIGHT_CLICK_BLOCK) {
 				for (Territory t : TerritoryLoader.instance.getTerritories()) {
 					if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-						if (TerritoryOptions.enforceGui())
+						if (t.enforce(Protections.GUI))
 							ev.setCanceled(true);
-						if (TerritoryOptions.logGui())
+						if (t.log(Protections.GUI))
 							logger.log("Player "+ep.getCommandSenderName()+" used GUI at "+x+", "+y+", "+z+" in "+t);
 						break;
 					}
@@ -205,7 +207,7 @@ public class TerritoryZone extends DragonAPIMod {
 	}
 
 	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void track(BlockEvent.BreakEvent ev) {
+	public void trackBreak(BlockEvent.BreakEvent ev) {
 		EntityPlayer ep = ev.getPlayer();
 		if (ep == null) {
 			TerritoryZone.logger.logError("Something tried a null-player break block event!");
@@ -221,9 +223,9 @@ public class TerritoryZone extends DragonAPIMod {
 		if (!world.isRemote) {
 			for (Territory t : TerritoryLoader.instance.getTerritories()) {
 				if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-					if (TerritoryOptions.enforceBlockBreak())
+					if (t.enforce(Protections.BREAK))
 						ev.setCanceled(true);
-					if (TerritoryOptions.logBlockBreak()) {
+					if (t.log(Protections.BREAK)) {
 						String b = Block.blockRegistry.getNameForObject(ev.block);
 						logger.log("Player "+ep.getCommandSenderName()+" broke "+b+":"+ev.blockMetadata+" at "+x+", "+y+", "+z+" in "+t);
 					}
@@ -234,7 +236,7 @@ public class TerritoryZone extends DragonAPIMod {
 	}
 
 	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void track(LivingHurtEvent ev) {
+	public void trackAnimals(LivingHurtEvent ev) {
 		if (!(ev.entityLiving instanceof EntityMob) && ev.source.getEntity() instanceof EntityPlayer) {
 			EntityPlayer ep = (EntityPlayer)ev.source.getEntity();
 			if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
@@ -243,10 +245,52 @@ public class TerritoryZone extends DragonAPIMod {
 			if (!world.isRemote) {
 				for (Territory t : TerritoryLoader.instance.getTerritories()) {
 					if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
-						if (TerritoryOptions.enforceAnimalKill())
+						if (t.enforce(Protections.ANIMALS))
 							ev.setCanceled(true);
-						if (TerritoryOptions.logAnimalKill()) {
+						if (t.log(Protections.ANIMALS)) {
 							logger.log("Player "+ep.getCommandSenderName()+" attacked "+ev.entityLiving+" in "+t);
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+	public void trackItems(ItemPickupEvent ev) {
+		EntityPlayer ep = ev.player;
+		if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
+			return;
+		World world = ep.worldObj;
+		if (!world.isRemote) {
+			for (Territory t : TerritoryLoader.instance.getTerritories()) {
+				if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
+					if (t.enforce(Protections.ITEMS))
+						ev.setCanceled(true);
+					if (t.log(Protections.ITEMS)) {
+						logger.log("Player "+ep.getCommandSenderName()+" tried picking up "+ev.pickedUp+" in "+t);
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+	public void trackPVP(LivingHurtEvent ev) {
+		if (ev.entityLiving instanceof EntityPlayer && ev.source.getEntity() instanceof EntityPlayer) {
+			EntityPlayer ep = (EntityPlayer)ev.source.getEntity();
+			if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
+				return;
+			World world = ep.worldObj;
+			if (!world.isRemote) {
+				for (Territory t : TerritoryLoader.instance.getTerritories()) {
+					if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
+						if (t.enforce(Protections.PVP))
+							ev.setCanceled(true);
+						if (t.log(Protections.PVP)) {
+							logger.log("Player "+ep.getCommandSenderName()+" tried attacking "+ev.entityLiving.getCommandSenderName()+" in "+t);
 						}
 						break;
 					}

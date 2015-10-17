@@ -23,6 +23,7 @@ import Reika.DragonAPI.Instantiable.Data.Immutable.CommutativePair;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
 import Reika.DragonAPI.Libraries.Java.ReikaStringParser;
 import Reika.TerritoryZone.Territory.Owner;
+import Reika.TerritoryZone.Territory.Protections;
 import Reika.TerritoryZone.Territory.TerritoryShape;
 
 public class TerritoryLoader {
@@ -102,18 +103,26 @@ public class TerritoryLoader {
 			this.writeCommentLine(p, "-------------------------------");
 			this.writeCommentLine(p, "");
 			this.writeCommentLine(p, "Use this file to specify the territory zones.");
-			this.writeCommentLine(p, "Specify one per line, and format them as 'DimID, x, y, z, size, color, shape, [ownerName, ownerUUID]...'");
+			this.writeCommentLine(p, "Specify one per line, and format them as 'DimID, x, y, z, size, color, enforcement, logging, shape, [ownerName, ownerUUID]...'");
 			this.writeCommentLine(p, "Zone Shapes:");
-			this.writeCommentLine(p, "\tCUBE - Cubical Zone");
-			this.writeCommentLine(p, "\tPRISM - Full-height square perimeter");
-			this.writeCommentLine(p, "\tSPHERE - Spherical Zone");
-			this.writeCommentLine(p, "\tCYLINDER - Full-height circular perimeter");
+			for (int i = 0; i < TerritoryShape.list.length; i++) {
+				TerritoryShape pr = TerritoryShape.list[i];
+				this.writeCommentLine(p, pr.name()+" - "+pr.desc);
+			}
 			this.writeCommentLine(p, "");
 			this.writeCommentLine(p, "Colors must be hex codes.");
 			this.writeCommentLine(p, "");
+			this.writeCommentLine(p, "Enforcement and Logging choose protections, and are bitflag-based. Each protection type has a number associated with it;");
+			this.writeCommentLine(p, "Each type's number is twice that of the previous type. Specify the sum of all selected numbers to choose desired protections.");
+			this.writeCommentLine(p, "Selecting zero will disable all protection types.");
+			for (int i = 0; i < Protections.list.length; i++) {
+				Protections pr = Protections.list[i];
+				this.writeCommentLine(p, pr.desc+" - "+(1 << pr.ordinal()));
+			}
+			this.writeCommentLine(p, "");
 			this.writeCommentLine(p, "Sample Lines:");
-			this.writeCommentLine(p, "\t0, -10, 64, 120, 32, 0xff0000, CUBE, SomePlayer, 504e35e4-ee36-45e0-b1d3-7ad419311644");
-			this.writeCommentLine(p, "\t7, 1023, 90, -1304, 128, 0xffffff, CYLINDER, TheAdmin, 9f25640a-0e1a-4eef-ba21-66a99b1de20a, User2, 759fc6d2-1868-4c90-908c-81bf9b3cd973");
+			this.writeCommentLine(p, "\t0, -10, 64, 120, 32, 0xff0000, 11, 0, CUBE, SomePlayer, 504e35e4-ee36-45e0-b1d3-7ad419311644");
+			this.writeCommentLine(p, "\t7, 1023, 90, -1304, 128, 0xffffff, 15, 16, CYLINDER, TheAdmin, 9f25640a-0e1a-4eef-ba21-66a99b1de20a, User2, 759fc6d2-1868-4c90-908c-81bf9b3cd973");
 			this.writeCommentLine(p, "");
 			this.writeCommentLine(p, "Entries missing any element, or with less than one owner, are incorrect.");
 			this.writeCommentLine(p, "Incorrectly formatted lines will be ignored and will log an error in the console.");
@@ -133,9 +142,9 @@ public class TerritoryLoader {
 	private Territory parseString(String s) throws Exception {
 		s = ReikaStringParser.stripSpaces(s);
 		String[] parts = s.split(",");
-		if (parts.length < 9)
+		if (parts.length < 11)
 			throw new IllegalArgumentException("Invalid parameter count.");
-		TerritoryShape sh = TerritoryShape.valueOf(parts[6].toUpperCase());
+		TerritoryShape sh = TerritoryShape.valueOf(parts[8].toUpperCase());
 		if (sh == null)
 			throw new IllegalArgumentException("Invalid shape.");
 		int dim = Integer.parseInt(parts[0]);
@@ -146,12 +155,14 @@ public class TerritoryLoader {
 		if (parts[5].startsWith("0x"))
 			parts[5] = parts[5].substring(2);
 		int clr = Integer.parseInt(parts[5], 16);
-		return new Territory(new WorldLocation(dim, x, y, z), r, clr, sh, this.parseOwners(parts));
+		int enf = Integer.parseInt(parts[6]);
+		int log = Integer.parseInt(parts[7]);
+		return new Territory(new WorldLocation(dim, x, y, z), r, clr, enf, log, sh, this.parseOwners(parts));
 	}
 
 	private Collection<Owner> parseOwners(String[] parts) {
 		Collection<Owner> c = new ArrayList();
-		for (int i = 7; i < parts.length; i += 2) {
+		for (int i = 9; i < parts.length; i += 2) {
 			String name = parts[i];
 			if (name.isEmpty())
 				throw new IllegalArgumentException("Empty name is invalid.");

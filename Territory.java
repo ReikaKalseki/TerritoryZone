@@ -32,20 +32,24 @@ public final class Territory {
 	public final int color;
 	private final Collection<Owner> owners = new HashSet();
 	public final TerritoryShape shape;
+	public final int enforcementLevel;
+	public final int loggingLevel;
 
 	//public Territory(int dim, int x, int y, int z, int r, String name, UUID uid, TerritoryShape sh) {
 	//	this(new WorldLocation(dim, x, y, z), r, name, uid, sh);
 	//}
 
-	public Territory(WorldLocation loc, int r, int clr, TerritoryShape sh) {
-		this(loc, r, clr, sh, null);
+	public Territory(WorldLocation loc, int r, int clr, int enf, int log, TerritoryShape sh) {
+		this(loc, r, clr, enf, log, sh, null);
 	}
 
-	public Territory(WorldLocation loc, int r, int clr, TerritoryShape sh, Collection<Owner> c) {
+	public Territory(WorldLocation loc, int r, int clr, int enf, int log, TerritoryShape sh, Collection<Owner> c) {
 		origin = loc;
 		radius = r;
 		shape = sh;
 		color = clr;
+		enforcementLevel = enf;
+		loggingLevel = log;
 		if (c != null)
 			owners.addAll(c);
 	}
@@ -65,21 +69,21 @@ public final class Territory {
 
 	private double getEdgeDistanceAlong(Vec3 vec) {
 		switch(shape) {
-		case CUBE:
-			return 0;
-		case CYLINDER: {
-			double pro = Math.min(radius, ReikaVectorHelper.getXZProjection(vec).lengthVector());
-			return Math.sqrt(pro*pro+vec.yCoord*vec.yCoord);
-		}
-		case PRISM: {
-			double ang = Math.atan2(vec.xCoord, vec.zCoord);
-			double pro = Math.min(1/Math.sin(ang), 1/Math.cos(ang));
-			return Math.sqrt(pro*pro+vec.yCoord*vec.yCoord);
-		}
-		case SPHERE:
-			return Math.min(radius, vec.lengthVector());
-		default:
-			return 0;
+			case CUBE:
+				return 0;
+			case CYLINDER: {
+				double pro = Math.min(radius, ReikaVectorHelper.getXZProjection(vec).lengthVector());
+				return Math.sqrt(pro*pro+vec.yCoord*vec.yCoord);
+			}
+			case PRISM: {
+				double ang = Math.atan2(vec.xCoord, vec.zCoord);
+				double pro = Math.min(1/Math.sin(ang), 1/Math.cos(ang));
+				return Math.sqrt(pro*pro+vec.yCoord*vec.yCoord);
+			}
+			case SPHERE:
+				return Math.min(radius, vec.lengthVector());
+			default:
+				return 0;
 		}
 	}
 
@@ -114,7 +118,7 @@ public final class Territory {
 
 	@Override
 	public String toString() {
-		return radius+"-"+shape.name()+" @ "+origin.toString()+" by "+owners.toString();
+		return radius+"-"+shape.name()+" @ "+origin.toString()+" {"+enforcementLevel+"/"+loggingLevel+"} "+" by "+owners.toString();
 	}
 
 	public String getBoundsDesc() {
@@ -135,6 +139,8 @@ public final class Territory {
 		nbt.setInteger("r", radius);
 		nbt.setInteger("color", color);
 		nbt.setInteger("shape", shape.ordinal());
+		nbt.setInteger("enforce", enforcementLevel);
+		nbt.setInteger("logging", loggingLevel);
 		NBTTagList li = new NBTTagList();
 		for (Owner o : owners) {
 			NBTTagCompound tag = new NBTTagCompound();
@@ -148,9 +154,11 @@ public final class Territory {
 		WorldLocation loc = WorldLocation.readFromNBT("loc", nbt);
 		int radius = nbt.getInteger("r");
 		int clr = nbt.getInteger("color");
+		int enf = nbt.getInteger("enforce");
+		int log = nbt.getInteger("logging");
 		TerritoryShape sh = TerritoryShape.list[nbt.getInteger("shape")];
 		NBTTagList li = nbt.getTagList("owners", NBTTypes.COMPOUND.ID);
-		Territory t = new Territory(loc, radius, clr, sh);
+		Territory t = new Territory(loc, radius, clr, enf, log, sh);
 		for (Object o : li.tagList) {
 			NBTTagCompound dat = (NBTTagCompound)o;
 			Owner own = Owner.readFromNBT(dat);
@@ -160,25 +168,31 @@ public final class Territory {
 	}
 
 	public static enum TerritoryShape {
-		CUBE(),
-		PRISM(),
-		SPHERE(),
-		CYLINDER();
+		CUBE("Cubical Zone"),
+		PRISM("Full-height square perimeter"),
+		SPHERE("Spherical Zone"),
+		CYLINDER("Full-height circular perimeter");
 
-		private static final TerritoryShape[] list = values();
+		public final String desc;
+
+		public static final TerritoryShape[] list = values();
+
+		private TerritoryShape(String s) {
+			desc = s;
+		}
 
 		private boolean isInZone(double xo, double yo, double zo, double x, double y, double z, int r) {
 			switch(this) {
-			case CUBE:
-				return ReikaMathLibrary.isValueInsideBoundsIncl(xo-r, xo+r+1, x) && ReikaMathLibrary.isValueInsideBoundsIncl(yo-r, yo+r+1, y) && ReikaMathLibrary.isValueInsideBoundsIncl(zo-r, zo+r+1, z);
-			case CYLINDER:
-				return ReikaMathLibrary.py3d(x-xo, 0, z-zo) <= r+1;
-			case PRISM:
-				return ReikaMathLibrary.isValueInsideBoundsIncl(xo-r, xo+r+1, x) && ReikaMathLibrary.isValueInsideBoundsIncl(zo-r, zo+r+1, z);
-			case SPHERE:
-				return ReikaMathLibrary.py3d(x-xo, y-yo, z-zo) <= r+1;
-			default:
-				return false;
+				case CUBE:
+					return ReikaMathLibrary.isValueInsideBoundsIncl(xo-r, xo+r+1, x) && ReikaMathLibrary.isValueInsideBoundsIncl(yo-r, yo+r+1, y) && ReikaMathLibrary.isValueInsideBoundsIncl(zo-r, zo+r+1, z);
+				case CYLINDER:
+					return ReikaMathLibrary.py3d(x-xo, 0, z-zo) <= r+1;
+				case PRISM:
+					return ReikaMathLibrary.isValueInsideBoundsIncl(xo-r, xo+r+1, x) && ReikaMathLibrary.isValueInsideBoundsIncl(zo-r, zo+r+1, z);
+				case SPHERE:
+					return ReikaMathLibrary.py3d(x-xo, y-yo, z-zo) <= r+1;
+				default:
+					return false;
 			}
 		}
 
@@ -187,28 +201,28 @@ public final class Territory {
 			int oy = loc.yCoord;
 			int oz = loc.zCoord;
 			switch(this) {
-			case CUBE: {
-				int minx = ox-radius;
-				int miny = oy-radius;
-				int minz = oz-radius;
-				int maxx = ox+radius+1;
-				int maxy = oy+radius+1;
-				int maxz = oz+radius+1;
-				return String.format("Zone is %d, %d, %d to %d, %d, %d", minx, miny, minz, maxx, maxy, maxz);
-			}
-			case CYLINDER:
-				return String.format("Zone is a radius %d cylinder around %d, %d", radius, ox, oz);
-			case PRISM: {
-				int minx = ox-radius;
-				int minz = oz-radius;
-				int maxx = ox+radius+1;
-				int maxz = oz+radius+1;
-				return String.format("Zone is %d, %d to %d, %d", minx, minz, maxx, maxz);
-			}
-			case SPHERE:
-				return String.format("Zone is a radius %d sphere around %d, %d, %d", radius, ox, oy, oz);
-			default:
-				return "[ERROR]";
+				case CUBE: {
+					int minx = ox-radius;
+					int miny = oy-radius;
+					int minz = oz-radius;
+					int maxx = ox+radius+1;
+					int maxy = oy+radius+1;
+					int maxz = oz+radius+1;
+					return String.format("Zone is %d, %d, %d to %d, %d, %d", minx, miny, minz, maxx, maxy, maxz);
+				}
+				case CYLINDER:
+					return String.format("Zone is a radius %d cylinder around %d, %d", radius, ox, oz);
+				case PRISM: {
+					int minx = ox-radius;
+					int minz = oz-radius;
+					int maxx = ox+radius+1;
+					int maxz = oz+radius+1;
+					return String.format("Zone is %d, %d to %d, %d", minx, minz, maxx, maxz);
+				}
+				case SPHERE:
+					return String.format("Zone is a radius %d sphere around %d, %d, %d", radius, ox, oy, oz);
+				default:
+					return "[ERROR]";
 			}
 		}
 	}
@@ -261,6 +275,35 @@ public final class Territory {
 			return name+" ("+id.toString()+")";
 		}
 
+	}
+
+	public boolean enforce(Protections lvl) {
+		return lvl.enabled(enforcementLevel);
+	}
+
+	public boolean log(Protections lvl) {
+		return lvl.enabled(loggingLevel);
+	}
+
+	public static enum Protections {
+		BREAK("Block Breaking"),
+		PLACE("Block Placing"),
+		GUI("Opening GUIs"),
+		ANIMALS("Killing Animals"),
+		PVP("PvP"),
+		ITEMS("Item Pickup");
+
+		public final String desc;
+
+		public static Protections[] list = values();
+
+		private Protections(String s) {
+			desc = s;
+		}
+
+		protected boolean enabled(int flags) {
+			return (flags & (1 << this.ordinal())) != 0;
+		}
 	}
 
 }

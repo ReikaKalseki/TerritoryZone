@@ -14,8 +14,8 @@ import Reika.DragonAPI.Interfaces.Configuration.IntegerConfig;
 
 public enum TerritoryOptions implements IntegerConfig, BooleanConfig {
 
-	ENFORCE("Enforcement Level", 0),
-	LOG("Logging Level", 4),
+	//ENFORCE("Enforcement Level", 0),
+	//LOG("Logging Level", 4),
 	OVERLAY("Do in-zone overlay", true),
 	FADEOUT("Fade Overlay In and Out", false),
 	SMALLOVERLAY("Shrink Overlay", false),
@@ -86,38 +86,6 @@ public enum TerritoryOptions implements IntegerConfig, BooleanConfig {
 	@Override
 	public boolean shouldLoad() {
 		return true;
-	}
-
-	public static boolean enforceBlockBreak() {
-		return ENFORCE.getValue() >= 1;
-	}
-
-	public static boolean enforceBlockPlace() {
-		return ENFORCE.getValue() >= 2;
-	}
-
-	public static boolean enforceGui() {
-		return ENFORCE.getValue() >= 3;
-	}
-
-	public static boolean enforceAnimalKill() {
-		return ENFORCE.getValue() >= 4;
-	}
-
-	public static boolean logBlockBreak() {
-		return LOG.getValue() >= 1;
-	}
-
-	public static boolean logBlockPlace() {
-		return LOG.getValue() >= 2;
-	}
-
-	public static boolean logGui() {
-		return LOG.getValue() >= 3;
-	}
-
-	public static boolean logAnimalKill() {
-		return LOG.getValue() >= 4;
 	}
 
 }
