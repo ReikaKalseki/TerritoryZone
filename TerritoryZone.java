@@ -62,7 +62,7 @@ public class TerritoryZone extends DragonAPIMod {
 	@Instance("TerritoryZone")
 	public static TerritoryZone instance = new TerritoryZone();
 
-	public static final ControlledConfig config = new ControlledConfig(instance, TerritoryOptions.optionList, null, 0);
+	public static final ControlledConfig config = new ControlledConfig(instance, TerritoryOptions.optionList, null);
 
 	public static ModLogger logger;
 
