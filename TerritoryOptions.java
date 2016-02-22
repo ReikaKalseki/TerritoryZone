@@ -19,7 +19,8 @@ public enum TerritoryOptions implements IntegerConfig, BooleanConfig {
 	OVERLAY("Do in-zone overlay", true),
 	FADEOUT("Fade Overlay In and Out", false),
 	SMALLOVERLAY("Shrink Overlay", false),
-	FAKEPLAYER("Intercept Fake Players", true);
+	FAKEPLAYER("Intercept Fake Players", true),
+	FILELOG("Log to Dedicated File", true);
 
 	private String label;
 	private boolean defaultState;

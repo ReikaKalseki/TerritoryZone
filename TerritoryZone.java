@@ -27,13 +27,21 @@ import Reika.DragonAPI.Auxiliary.Trackers.CommandableUpdateChecker;
 import Reika.DragonAPI.Auxiliary.Trackers.PlayerHandler;
 import Reika.DragonAPI.Base.DragonAPIMod;
 import Reika.DragonAPI.Base.DragonAPIMod.LoadProfiler.LoadPhase;
+import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
 import Reika.DragonAPI.Instantiable.Event.PlayerPlaceBlockEvent;
 import Reika.DragonAPI.Instantiable.IO.ControlledConfig;
 import Reika.DragonAPI.Instantiable.IO.ModLogger;
 import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
+import Reika.TerritoryZone.Territory.Owner;
 import Reika.TerritoryZone.Territory.Protections;
+import Reika.TerritoryZone.Event.TerritoryEnforceEvent;
+import Reika.TerritoryZone.Event.TerritoryLoggingEvent;
+import Reika.TerritoryZone.Event.TerritoryReloadedEvent;
+import Reika.TerritoryZone.Event.Trigger.TerritoryCreationEvent;
+import Reika.TerritoryZone.Event.Trigger.TerritoryReloadEvent;
+import Reika.TerritoryZone.Event.Trigger.TerritoryRemoveEvent;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
@@ -86,6 +94,7 @@ public class TerritoryZone extends DragonAPIMod {
 			logger.setOutput("**_Loading_Log.log");
 
 		ReikaPacketHelper.registerPacketHandler(instance, packetChannel, new TerritoryPacketHandler());
+		FMLCommonHandler.instance().bus().register(this);
 
 		this.basicSetup(evt);
 		this.finishTiming();
@@ -101,6 +110,8 @@ public class TerritoryZone extends DragonAPIMod {
 		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
 			MinecraftForge.EVENT_BUS.register(TerritoryOverlay.instance);
 		}
+
+		FileLogger.instance.init();
 
 		this.finishTiming();
 	}
@@ -150,6 +161,48 @@ public class TerritoryZone extends DragonAPIMod {
 		return CommandableUpdateChecker.reikaURL;
 	}
 
+	public static void log(Territory t, String s) {
+		MinecraftForge.EVENT_BUS.post(new TerritoryLoggingEvent(t, s));
+		if (TerritoryOptions.FILELOG.getState()) {
+			FileLogger.instance.log(s);
+		}
+		else {
+			logger.log(s);
+		}
+	}
+
+	public static void reloadTerritories() {
+		TerritoryLoader.instance.load();
+		TerritoryDispatcher.instance.sendTerritoriesToAll();
+		MinecraftForge.EVENT_BUS.post(new TerritoryReloadedEvent());
+		logger.log("Territories Reloaded. "+TerritoryLoader.instance.getTerritories().size()+" Territories:");
+		for (Territory t : TerritoryLoader.instance.getTerritories()) {
+			logger.log(t.toString());
+		}
+	}
+
+	@SubscribeEvent
+	public void triggerReload(TerritoryReloadEvent evt) {
+		reloadTerritories();
+	}
+
+	@SubscribeEvent
+	public void triggerCreate(TerritoryCreationEvent.CreateTwoPoints evt) {
+		Territory t = Territory.getFromTwoPoints(evt.world, evt.x1, evt.y1, evt.z1, evt.x2, evt.y2, evt.z2, evt.player, evt.enforcement, evt.logging);
+		TerritoryLoader.instance.addTerritory(t);
+	}
+
+	@SubscribeEvent
+	public void triggerCreate(TerritoryCreationEvent.CreateDirect evt) {
+		Territory t = new Territory(new WorldLocation(evt.world, evt.x, evt.y, evt.z), evt.radius, 0xff0000, evt.enforcement, evt.logging, evt.shape, ReikaJavaLibrary.makeListFrom(new Owner(evt.player)));
+		TerritoryLoader.instance.addTerritory(t);
+	}
+
+	@SubscribeEvent
+	public void triggerRemoval(TerritoryRemoveEvent evt) {
+		TerritoryLoader.instance.removeTerritory(evt.territory);
+	}
+
 	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
 	public void trackPlace(PlayerPlaceBlockEvent ev) {
 		EntityPlayer ep = ev.player;
@@ -167,10 +220,14 @@ public class TerritoryZone extends DragonAPIMod {
 		if (!world.isRemote) {
 			for (Territory t : TerritoryLoader.instance.getTerritories()) {
 				if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-					if (t.enforce(Protections.PLACE))
+					if (t.enforce(Protections.PLACE) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.PLACE)))
 						ev.setCanceled(true);
-					if (t.log(Protections.PLACE))
-						logger.log("Player "+ep.getCommandSenderName()+" used GUI at "+x+", "+y+", "+z+" in "+t);
+					if (t.log(Protections.PLACE)) {
+						log(t, "Player "+ep.getCommandSenderName()+" placed a block "+ev.block.getLocalizedName()+" at "+x+", "+y+", "+z+" in "+t);
+						if (t.chatMessages) {
+							t.sendChatToOwner(Protections.PLACE, ep, ev.block, x, y, z);
+						}
+					}
 					break;
 				}
 			}
@@ -178,7 +235,7 @@ public class TerritoryZone extends DragonAPIMod {
 	}
 
 	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void trackPlace(PlayerInteractEvent ev) {
+	public void trackGUIs(PlayerInteractEvent ev) {
 		EntityPlayer ep = ev.entityPlayer;
 		if (ep == null) {
 			TerritoryZone.logger.logError("Something tried a null-player interact event!");
@@ -195,10 +252,13 @@ public class TerritoryZone extends DragonAPIMod {
 			if (ev.action == Action.RIGHT_CLICK_BLOCK) {
 				for (Territory t : TerritoryLoader.instance.getTerritories()) {
 					if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-						if (t.enforce(Protections.GUI))
+						if (t.enforce(Protections.GUI) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.GUI)))
 							ev.setCanceled(true);
 						if (t.log(Protections.GUI))
-							logger.log("Player "+ep.getCommandSenderName()+" used GUI at "+x+", "+y+", "+z+" in "+t);
+							log(t, "Player "+ep.getCommandSenderName()+" used GUI at "+x+", "+y+", "+z+" in "+t);
+						if (t.chatMessages) {
+							t.sendChatToOwner(Protections.GUI, ep, x, y, z);
+						}
 						break;
 					}
 				}
@@ -223,11 +283,14 @@ public class TerritoryZone extends DragonAPIMod {
 		if (!world.isRemote) {
 			for (Territory t : TerritoryLoader.instance.getTerritories()) {
 				if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-					if (t.enforce(Protections.BREAK))
+					if (t.enforce(Protections.BREAK) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.BREAK)))
 						ev.setCanceled(true);
 					if (t.log(Protections.BREAK)) {
 						String b = Block.blockRegistry.getNameForObject(ev.block);
-						logger.log("Player "+ep.getCommandSenderName()+" broke "+b+":"+ev.blockMetadata+" at "+x+", "+y+", "+z+" in "+t);
+						log(t, "Player "+ep.getCommandSenderName()+" broke "+b+":"+ev.blockMetadata+" at "+x+", "+y+", "+z+" in "+t);
+						if (t.chatMessages) {
+							t.sendChatToOwner(Protections.BREAK, ep, ev.block, x, y, z);
+						}
 					}
 					break;
 				}
@@ -245,10 +308,13 @@ public class TerritoryZone extends DragonAPIMod {
 			if (!world.isRemote) {
 				for (Territory t : TerritoryLoader.instance.getTerritories()) {
 					if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
-						if (t.enforce(Protections.ANIMALS))
+						if (t.enforce(Protections.ANIMALS) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.ANIMALS)))
 							ev.setCanceled(true);
 						if (t.log(Protections.ANIMALS)) {
-							logger.log("Player "+ep.getCommandSenderName()+" attacked "+ev.entityLiving+" in "+t);
+							log(t, "Player "+ep.getCommandSenderName()+" attacked "+ev.entityLiving+" in "+t);
+							if (t.chatMessages) {
+								t.sendChatToOwner(Protections.ANIMALS, ep, ev.entityLiving);
+							}
 						}
 						break;
 					}
@@ -266,10 +332,13 @@ public class TerritoryZone extends DragonAPIMod {
 		if (!world.isRemote) {
 			for (Territory t : TerritoryLoader.instance.getTerritories()) {
 				if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
-					if (t.enforce(Protections.ITEMS))
+					if (t.enforce(Protections.ITEMS) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.ITEMS)))
 						ev.setCanceled(true);
 					if (t.log(Protections.ITEMS)) {
-						logger.log("Player "+ep.getCommandSenderName()+" tried picking up "+ev.pickedUp+" in "+t);
+						log(t, "Player "+ep.getCommandSenderName()+" tried picking up "+ev.pickedUp+" in "+t);
+						if (t.chatMessages) {
+							t.sendChatToOwner(Protections.ITEMS, ep, ev.pickedUp.getEntityItem(), ev.pickedUp.posX, ev.pickedUp.posY, ev.pickedUp.posZ);
+						}
 					}
 					break;
 				}
@@ -287,10 +356,13 @@ public class TerritoryZone extends DragonAPIMod {
 			if (!world.isRemote) {
 				for (Territory t : TerritoryLoader.instance.getTerritories()) {
 					if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
-						if (t.enforce(Protections.PVP))
+						if (t.enforce(Protections.PVP) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.PVP)))
 							ev.setCanceled(true);
 						if (t.log(Protections.PVP)) {
-							logger.log("Player "+ep.getCommandSenderName()+" tried attacking "+ev.entityLiving.getCommandSenderName()+" in "+t);
+							log(t, "Player "+ep.getCommandSenderName()+" tried attacking "+ev.entityLiving.getCommandSenderName()+" in "+t);
+							if (t.chatMessages) {
+								t.sendChatToOwner(Protections.PVP, ep, ev.entityLiving);
+							}
 						}
 						break;
 					}

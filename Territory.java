@@ -9,21 +9,29 @@
  ******************************************************************************/
 package Reika.TerritoryZone;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
+import net.minecraftforge.common.MinecraftForge;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
 import Reika.DragonAPI.Libraries.ReikaNBTHelper.NBTTypes;
+import Reika.DragonAPI.Libraries.IO.ReikaChatHelper;
+import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
+import Reika.DragonAPI.Libraries.Java.ReikaStringParser;
 import Reika.DragonAPI.Libraries.MathSci.ReikaMathLibrary;
 import Reika.DragonAPI.Libraries.MathSci.ReikaVectorHelper;
+import Reika.TerritoryZone.Event.TerritoryCreateEvent;
 
 public final class Territory {
 
@@ -34,6 +42,7 @@ public final class Territory {
 	public final TerritoryShape shape;
 	public final int enforcementLevel;
 	public final int loggingLevel;
+	public final boolean chatMessages;
 
 	//public Territory(int dim, int x, int y, int z, int r, String name, UUID uid, TerritoryShape sh) {
 	//	this(new WorldLocation(dim, x, y, z), r, name, uid, sh);
@@ -49,9 +58,30 @@ public final class Territory {
 		shape = sh;
 		color = clr;
 		enforcementLevel = enf;
-		loggingLevel = log;
+		chatMessages = log < 0;
+		loggingLevel = Math.abs(log);
 		if (c != null)
 			owners.addAll(c);
+		MinecraftForge.EVENT_BUS.post(new TerritoryCreateEvent(this));
+	}
+
+	public static Territory getFromTwoPoints(World world, int x1, int y1, int z1, int x2, int y2, int z2, EntityPlayer ep, int enforce, int log) {
+		int dx = x2-x1;
+		int dz = z2-z1;
+		int r = (dx+dz)/2;
+		int x = (x1+x2)/2;
+		int y = y1 == Integer.MIN_VALUE ? Integer.MIN_VALUE : (y1+y2)/2;
+		int z = (x1+z2)/2;
+		TerritoryShape s = y == Integer.MIN_VALUE ? TerritoryShape.PRISM : TerritoryShape.CUBE;
+		return new Territory(new WorldLocation(world, x, s == TerritoryShape.PRISM ? 64 : y, z), r, 0xff0000, enforce, log, s, ReikaJavaLibrary.makeListFrom(new Owner(ep)));
+	}
+
+	public long getArea() {
+		return ReikaMathLibrary.longpow(radius*2+1, 2);
+	}
+
+	public long getVolume() {
+		return ReikaMathLibrary.longpow(radius*2+1, 3);
 	}
 
 	public boolean intersects(Territory t) {
@@ -132,6 +162,14 @@ public final class Territory {
 			sb.append(", ");
 		}
 		return sb.length() > 2 ? sb.substring(0, sb.length()-2) : sb.toString();
+	}
+
+	public HashSet<UUID> getOwnerIDs() {
+		HashSet<UUID> set = new HashSet();
+		for (Owner o : owners) {
+			set.add(o.id);
+		}
+		return set;
 	}
 
 	public void writeToNBT(NBTTagCompound nbt) {
@@ -232,11 +270,11 @@ public final class Territory {
 		public final String name;
 		public final UUID id;
 
-		private Owner(String name, String id) {
+		public Owner(String name, String id) {
 			this(name, UUID.fromString(id));
 		}
 
-		private Owner(EntityPlayer ep) {
+		public Owner(EntityPlayer ep) {
 			this(ep.getCommandSenderName(), ep.getUniqueID());
 		}
 
@@ -304,6 +342,50 @@ public final class Territory {
 		protected boolean enabled(int flags) {
 			return (flags & (1 << this.ordinal())) != 0;
 		}
+
+		private String getFormattedNotification(Object... args) {
+			switch(this) {
+				case ANIMALS:
+					return "Attacked "+args[0];
+				case BREAK:
+					return "Broke block "+((Block)args[0]).getLocalizedName()+" at "+args[1]+", "+args[2]+", "+args[3];
+				case GUI:
+					return "Opened a GUI at "+args[0]+", "+args[1]+", "+args[2];
+				case ITEMS:
+					return "Picked up an item "+((ItemStack)args[0]).getDisplayName()+" at "+args[1]+", "+args[2]+", "+args[3];
+				case PLACE:
+					return "Placed block "+((Block)args[0]).getLocalizedName()+" at "+args[1]+", "+args[2]+", "+args[3];
+				case PVP:
+					return "Attacked the owner '"+((Entity)args[0]).getCommandSenderName()+"'";
+			}
+			return "";
+		}
+	}
+
+	public void sendChatToOwner(Protections p, EntityPlayer ep, Object... args) {
+		String s = ep.getCommandSenderName()+" "+p.getFormattedNotification(args);
+		for (Owner o : owners) {
+			EntityPlayer epo = ep.worldObj.func_152378_a(o.id);
+			if (epo != null)
+				ReikaChatHelper.sendChatToPlayer(epo, s);
+		}
+	}
+
+	public String getFileString() {
+		ArrayList li = new ArrayList();
+		li.add(origin.dimensionID);
+		li.add(origin.xCoord);
+		li.add(origin.yCoord);
+		li.add(origin.zCoord);
+		li.add(radius);
+		li.add(Integer.toHexString(color));
+		li.add(enforcementLevel);
+		li.add(loggingLevel*(chatMessages ? -1 : 1));
+		for (Owner o : owners) {
+			li.add(o.name);
+			li.add(o.id);
+		}
+		return ReikaStringParser.getDelimited(", ", li);
 	}
 
 }

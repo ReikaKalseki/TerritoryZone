@@ -16,8 +16,7 @@ public class ReloadTerritoriesCommand extends DragonCommandBase {
 
 	@Override
 	public void processCommand(ICommandSender ics, String[] args) {
-		TerritoryLoader.instance.load();
-		TerritoryDispatcher.instance.sendTerritoriesToAll();
+		TerritoryZone.reloadTerritories();
 		this.sendChatToSender(ics, "Territories Reloaded. "+TerritoryLoader.instance.getTerritories().size()+" Territories:");
 		for (Territory t : TerritoryLoader.instance.getTerritories()) {
 			this.sendChatToSender(ics, t.toString());

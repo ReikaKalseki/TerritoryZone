@@ -11,6 +11,7 @@ package Reika.TerritoryZone;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,22 +19,87 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.UUID;
 
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraftforge.common.MinecraftForge;
 import Reika.DragonAPI.IO.ReikaFileReader;
 import Reika.DragonAPI.Instantiable.Data.Immutable.CommutativePair;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
+import Reika.DragonAPI.Instantiable.Data.Maps.MultiMap;
 import Reika.DragonAPI.Libraries.Java.ReikaStringParser;
 import Reika.TerritoryZone.Territory.Owner;
 import Reika.TerritoryZone.Territory.Protections;
 import Reika.TerritoryZone.Territory.TerritoryShape;
+import Reika.TerritoryZone.Event.TerritoryCollisionEvent;
+import Reika.TerritoryZone.Event.TerritoryRegisterEvent;
+import Reika.TerritoryZone.Event.TerritoryUnregisterEvent;
 
 public class TerritoryLoader {
 
 	public static final TerritoryLoader instance = new TerritoryLoader();
 
+	private final MultiMap<UUID, Territory> ownerMap = new MultiMap();
 	private final Collection<Territory> territories = new ArrayList();
 
 	private TerritoryLoader() {
 
+	}
+
+	public void addTerritory(Territory t) {
+		this.addTerritory(t, true);
+	}
+
+	private void addTerritory(Territory t, boolean fileIO) {
+		for (UUID id : t.getOwnerIDs())
+			ownerMap.addValue(id, t);
+		territories.add(t);
+		MinecraftForge.EVENT_BUS.post(new TerritoryRegisterEvent(t));
+		TerritoryDispatcher.instance.sendTerritoriesToAll();
+		if (fileIO) {
+			File f = new File(this.getFullSavePath());
+			ArrayList<String> li = ReikaFileReader.getFileAsLines(f, true);
+			li.add(t.getFileString());
+			try {
+				f.delete();
+				f.createNewFile();
+			}
+			catch (IOException e) {
+				TerritoryZone.logger.logError("Could not refresh territory file: "+e.toString());
+				e.printStackTrace();
+			}
+			ReikaFileReader.writeLinesToFile(f, li, true);
+		}
+	}
+
+	public void removeTerritory(Territory t) {
+		for (UUID id : t.getOwnerIDs())
+			ownerMap.remove(id, t);
+		territories.remove(t);
+		MinecraftForge.EVENT_BUS.post(new TerritoryUnregisterEvent(t));
+		TerritoryDispatcher.instance.sendTerritoriesToAll();
+		File f = new File(this.getFullSavePath());
+		ArrayList<String> li = ReikaFileReader.getFileAsLines(f, true);
+		li.remove(t.getFileString());
+		try {
+			f.delete();
+			f.createNewFile();
+		}
+		catch (IOException e) {
+			TerritoryZone.logger.logError("Could not refresh territory file: "+e.toString());
+			e.printStackTrace();
+		}
+		ReikaFileReader.writeLinesToFile(f, li, true);
+	}
+
+	public Collection<Territory> getTerritoriesFor(EntityPlayer ep) {
+		return this.getTerritoriesFor(ep.getUniqueID());
+	}
+
+	public Collection<Territory> getTerritoriesFor(UUID uid) {
+		return Collections.unmodifiableCollection(ownerMap.get(uid));
+	}
+
+	public Collection<Territory> getTerritories() {
+		return Collections.unmodifiableCollection(territories);
 	}
 
 	public final String getSaveFileName() {
@@ -60,7 +126,7 @@ public class TerritoryLoader {
 					try {
 						Territory entry = this.parseString(line);
 						if (entry != null) {
-							territories.add(entry);
+							this.addTerritory(entry, false);
 							TerritoryZone.logger.log("Added zone entry "+entry);
 						}
 						else {
@@ -89,6 +155,7 @@ public class TerritoryLoader {
 				if (t != t2 && !pairs.contains(new CommutativePair(t, t2)) && t.intersects(t2)) {
 					TerritoryZone.logger.log("Two zones intersect! "+t+" & "+t2);
 					pairs.add(new CommutativePair(t, t2));
+					MinecraftForge.EVENT_BUS.post(new TerritoryCollisionEvent(t, t2));
 				}
 			}
 		}
@@ -114,7 +181,7 @@ public class TerritoryLoader {
 			this.writeCommentLine(p, "");
 			this.writeCommentLine(p, "Enforcement and Logging choose protections, and are bitflag-based. Each protection type has a number associated with it;");
 			this.writeCommentLine(p, "Each type's number is twice that of the previous type. Specify the sum of all selected numbers to choose desired protections.");
-			this.writeCommentLine(p, "Selecting zero will disable all protection types.");
+			this.writeCommentLine(p, "Selecting zero will disable all protection types. Negative logging numbers will trigger a chat message to the territory owner.");
 			for (int i = 0; i < Protections.list.length; i++) {
 				Protections pr = Protections.list[i];
 				this.writeCommentLine(p, pr.desc+" - "+(1 << pr.ordinal()));
@@ -174,10 +241,6 @@ public class TerritoryLoader {
 
 	private static void writeCommentLine(PrintWriter p, String line) {
 		p.append("// "+line+"\n");
-	}
-
-	public Collection<Territory> getTerritories() {
-		return Collections.unmodifiableCollection(territories);
 	}
 
 }
