@@ -13,6 +13,8 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import Reika.DragonAPI.Auxiliary.Trackers.PlayerHandler.PlayerTracker;
+import Reika.DragonAPI.Instantiable.IO.PacketTarget;
+import Reika.DragonAPI.Instantiable.IO.PacketTarget.PlayerTarget;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
 
 public class TerritoryDispatcher implements PlayerTracker {
@@ -49,10 +51,10 @@ public class TerritoryDispatcher implements PlayerTracker {
 
 	private void sendTerritory(Territory t, EntityPlayerMP ep) {
 		if (ep == null) {
-			ReikaPacketHelper.sendNBTPacket(TerritoryZone.packetChannel, PacketInfo.TERRITORY.ordinal(), this.getTerritoryData(t));
+			ReikaPacketHelper.sendNBTPacket(TerritoryZone.packetChannel, PacketInfo.TERRITORY.ordinal(), this.getTerritoryData(t), new PacketTarget.AllPlayersTarget());
 		}
 		else {
-			ReikaPacketHelper.sendNBTPacket(TerritoryZone.packetChannel, PacketInfo.TERRITORY.ordinal(), ep, this.getTerritoryData(t));
+			ReikaPacketHelper.sendNBTPacket(TerritoryZone.packetChannel, PacketInfo.TERRITORY.ordinal(), this.getTerritoryData(t), new PlayerTarget(ep));
 		}
 	}
 

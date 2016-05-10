@@ -11,8 +11,9 @@ package Reika.TerritoryZone;
 
 import Reika.DragonAPI.Interfaces.Configuration.BooleanConfig;
 import Reika.DragonAPI.Interfaces.Configuration.IntegerConfig;
+import Reika.DragonAPI.Interfaces.Configuration.UserSpecificConfig;
 
-public enum TerritoryOptions implements IntegerConfig, BooleanConfig {
+public enum TerritoryOptions implements IntegerConfig, BooleanConfig, UserSpecificConfig {
 
 	//ENFORCE("Enforcement Level", 0),
 	//LOG("Logging Level", 4),
@@ -87,6 +88,14 @@ public enum TerritoryOptions implements IntegerConfig, BooleanConfig {
 	@Override
 	public boolean shouldLoad() {
 		return true;
+	}
+
+	@Override
+	public boolean isUserSpecific() {
+		switch(this) {
+			default:
+				return false;
+		}
 	}
 
 }

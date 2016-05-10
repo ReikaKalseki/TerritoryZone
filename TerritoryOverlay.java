@@ -61,6 +61,7 @@ public class TerritoryOverlay {
 			GL11.glAlphaFunc(GL11.GL_GEQUAL, 1/256F);
 			if (Keyboard.isKeyDown(Keyboard.KEY_TAB))
 				GL11.glDisable(GL11.GL_CULL_FACE);
+			GL11.glDepthMask(false);
 
 			double p2 = -TileEntityRendererDispatcher.staticPlayerX;
 			double p4 = -TileEntityRendererDispatcher.staticPlayerY;
