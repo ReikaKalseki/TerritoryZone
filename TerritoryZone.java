@@ -10,38 +10,21 @@
 package Reika.TerritoryZone;
 
 import java.net.URL;
+import java.util.Map;
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent.Action;
-import net.minecraftforge.event.world.BlockEvent;
 import Reika.DragonAPI.DragonAPICore;
 import Reika.DragonAPI.DragonOptions;
 import Reika.DragonAPI.Auxiliary.Trackers.CommandableUpdateChecker;
 import Reika.DragonAPI.Auxiliary.Trackers.PlayerHandler;
 import Reika.DragonAPI.Base.DragonAPIMod;
 import Reika.DragonAPI.Base.DragonAPIMod.LoadProfiler.LoadPhase;
-import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
-import Reika.DragonAPI.Instantiable.Event.PlayerPlaceBlockEvent;
 import Reika.DragonAPI.Instantiable.IO.ControlledConfig;
 import Reika.DragonAPI.Instantiable.IO.ModLogger;
-import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
-import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
-import Reika.TerritoryZone.Territory.Owner;
-import Reika.TerritoryZone.Territory.Protections;
-import Reika.TerritoryZone.Event.TerritoryEnforceEvent;
 import Reika.TerritoryZone.Event.TerritoryLoggingEvent;
 import Reika.TerritoryZone.Event.TerritoryReloadedEvent;
-import Reika.TerritoryZone.Event.Trigger.TerritoryCreationEvent;
-import Reika.TerritoryZone.Event.Trigger.TerritoryReloadEvent;
-import Reika.TerritoryZone.Event.Trigger.TerritoryRemoveEvent;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
@@ -51,13 +34,11 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import cpw.mods.fml.common.eventhandler.EventPriority;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.PlayerEvent.ItemPickupEvent;
+import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.relauncher.Side;
 
 
-@Mod( modid = "TerritoryZone", name="TerritoryZone", certificateFingerprint = "@GET_FINGERPRINT@", dependencies="required-after:DragonAPI")
+@Mod( modid = "TerritoryZone", name="TerritoryZone", certificateFingerprint = "@GET_FINGERPRINT@", dependencies="required-after:DragonAPI", acceptableRemoteVersions="*")
 
 public class TerritoryZone extends DragonAPIMod {
 
@@ -79,6 +60,16 @@ public class TerritoryZone extends DragonAPIMod {
 	@SidedProxy(clientSide="Reika.TerritoryZone.TerritoryClient", serverSide="Reika.TerritoryZone.TerritoryCommon")
 	public static TerritoryCommon proxy;
 
+	@NetworkCheckHandler
+	public boolean checkModList(Map<String, String> versions, Side side) {
+		if (side == Side.CLIENT) {
+			String v = versions.get(this.getModContainer().getModId());
+			if (v != null) {
+				return v.equals(this.getModContainer().getVersion());
+			}
+		}
+		return true;
+	}
 
 	@Override
 	@EventHandler
@@ -107,6 +98,7 @@ public class TerritoryZone extends DragonAPIMod {
 
 		PlayerHandler.instance.registerTracker(TerritoryDispatcher.instance);
 
+		MinecraftForge.EVENT_BUS.register(TerritoryEventHandler.instance);
 		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
 			MinecraftForge.EVENT_BUS.register(TerritoryOverlay.instance);
 		}
@@ -178,196 +170,6 @@ public class TerritoryZone extends DragonAPIMod {
 		logger.log("Territories Reloaded. "+TerritoryLoader.instance.getTerritories().size()+" Territories:");
 		for (Territory t : TerritoryLoader.instance.getTerritories()) {
 			logger.log(t.toString());
-		}
-	}
-
-	@SubscribeEvent
-	public void triggerReload(TerritoryReloadEvent evt) {
-		reloadTerritories();
-	}
-
-	@SubscribeEvent
-	public void triggerCreate(TerritoryCreationEvent.CreateTwoPoints evt) {
-		Territory t = Territory.getFromTwoPoints(evt.world, evt.x1, evt.y1, evt.z1, evt.x2, evt.y2, evt.z2, evt.player, evt.enforcement, evt.logging);
-		TerritoryLoader.instance.addTerritory(t);
-	}
-
-	@SubscribeEvent
-	public void triggerCreate(TerritoryCreationEvent.CreateDirect evt) {
-		Territory t = new Territory(new WorldLocation(evt.world, evt.x, evt.y, evt.z), evt.radius, 0xff0000, evt.enforcement, evt.logging, evt.shape, ReikaJavaLibrary.makeListFrom(new Owner(evt.player)));
-		TerritoryLoader.instance.addTerritory(t);
-	}
-
-	@SubscribeEvent
-	public void triggerRemoval(TerritoryRemoveEvent evt) {
-		TerritoryLoader.instance.removeTerritory(evt.territory);
-	}
-
-	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void trackPlace(PlayerPlaceBlockEvent ev) {
-		EntityPlayer ep = ev.player;
-		if (ep == null) {
-			TerritoryZone.logger.logError("Something tried a null-player interact event!");
-			ReikaJavaLibrary.dumpStack();
-			return;
-		}
-		else if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
-			return;
-		World world = ep.worldObj;
-		int x = ev.x;
-		int y = ev.y;
-		int z = ev.z;
-		if (!world.isRemote) {
-			for (Territory t : TerritoryLoader.instance.getTerritories()) {
-				if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-					if (t.enforce(Protections.PLACE) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.PLACE)))
-						ev.setCanceled(true);
-					if (t.log(Protections.PLACE)) {
-						log(t, "Player "+ep.getCommandSenderName()+" placed a block "+ev.block.getLocalizedName()+" at "+x+", "+y+", "+z+" in "+t);
-						if (t.chatMessages) {
-							t.sendChatToOwner(Protections.PLACE, ep, ev.block, x, y, z);
-						}
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void trackGUIs(PlayerInteractEvent ev) {
-		EntityPlayer ep = ev.entityPlayer;
-		if (ep == null) {
-			TerritoryZone.logger.logError("Something tried a null-player interact event!");
-			ReikaJavaLibrary.dumpStack();
-			return;
-		}
-		else if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
-			return;
-		World world = ep.worldObj;
-		int x = ev.x;
-		int y = ev.y;
-		int z = ev.z;
-		if (!world.isRemote) {
-			if (ev.action == Action.RIGHT_CLICK_BLOCK) {
-				for (Territory t : TerritoryLoader.instance.getTerritories()) {
-					if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-						if (t.enforce(Protections.GUI) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.GUI)))
-							ev.setCanceled(true);
-						if (t.log(Protections.GUI))
-							log(t, "Player "+ep.getCommandSenderName()+" used GUI at "+x+", "+y+", "+z+" in "+t);
-						if (t.chatMessages) {
-							t.sendChatToOwner(Protections.GUI, ep, x, y, z);
-						}
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void trackBreak(BlockEvent.BreakEvent ev) {
-		EntityPlayer ep = ev.getPlayer();
-		if (ep == null) {
-			TerritoryZone.logger.logError("Something tried a null-player break block event!");
-			ReikaJavaLibrary.dumpStack();
-			return;
-		}
-		else if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
-			return;
-		World world = ep.worldObj;
-		int x = ev.x;
-		int y = ev.y;
-		int z = ev.z;
-		if (!world.isRemote) {
-			for (Territory t : TerritoryLoader.instance.getTerritories()) {
-				if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {
-					if (t.enforce(Protections.BREAK) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.BREAK)))
-						ev.setCanceled(true);
-					if (t.log(Protections.BREAK)) {
-						String b = Block.blockRegistry.getNameForObject(ev.block);
-						log(t, "Player "+ep.getCommandSenderName()+" broke "+b+":"+ev.blockMetadata+" at "+x+", "+y+", "+z+" in "+t);
-						if (t.chatMessages) {
-							t.sendChatToOwner(Protections.BREAK, ep, ev.block, x, y, z);
-						}
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void trackAnimals(LivingHurtEvent ev) {
-		if (!(ev.entityLiving instanceof EntityMob) && ev.source.getEntity() instanceof EntityPlayer) {
-			EntityPlayer ep = (EntityPlayer)ev.source.getEntity();
-			if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
-				return;
-			World world = ep.worldObj;
-			if (!world.isRemote) {
-				for (Territory t : TerritoryLoader.instance.getTerritories()) {
-					if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
-						if (t.enforce(Protections.ANIMALS) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.ANIMALS)))
-							ev.setCanceled(true);
-						if (t.log(Protections.ANIMALS)) {
-							log(t, "Player "+ep.getCommandSenderName()+" attacked "+ev.entityLiving+" in "+t);
-							if (t.chatMessages) {
-								t.sendChatToOwner(Protections.ANIMALS, ep, ev.entityLiving);
-							}
-						}
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void trackItems(ItemPickupEvent ev) {
-		EntityPlayer ep = ev.player;
-		if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
-			return;
-		World world = ep.worldObj;
-		if (!world.isRemote) {
-			for (Territory t : TerritoryLoader.instance.getTerritories()) {
-				if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
-					if (t.enforce(Protections.ITEMS) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.ITEMS)))
-						ev.setCanceled(true);
-					if (t.log(Protections.ITEMS)) {
-						log(t, "Player "+ep.getCommandSenderName()+" tried picking up "+ev.pickedUp+" in "+t);
-						if (t.chatMessages) {
-							t.sendChatToOwner(Protections.ITEMS, ep, ev.pickedUp.getEntityItem(), ev.pickedUp.posX, ev.pickedUp.posY, ev.pickedUp.posZ);
-						}
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	@SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-	public void trackPVP(LivingHurtEvent ev) {
-		if (ev.entityLiving instanceof EntityPlayer && ev.source.getEntity() instanceof EntityPlayer) {
-			EntityPlayer ep = (EntityPlayer)ev.source.getEntity();
-			if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
-				return;
-			World world = ep.worldObj;
-			if (!world.isRemote) {
-				for (Territory t : TerritoryLoader.instance.getTerritories()) {
-					if (t.isInZone(world, ep) && !t.ownedBy(ep)) {
-						if (t.enforce(Protections.PVP) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.PVP)))
-							ev.setCanceled(true);
-						if (t.log(Protections.PVP)) {
-							log(t, "Player "+ep.getCommandSenderName()+" tried attacking "+ev.entityLiving.getCommandSenderName()+" in "+t);
-							if (t.chatMessages) {
-								t.sendChatToOwner(Protections.PVP, ep, ev.entityLiving);
-							}
-						}
-						break;
-					}
-				}
-			}
 		}
 	}
 }

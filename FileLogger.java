@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import Reika.DragonAPI.DragonAPICore;
+import Reika.DragonAPI.IO.ReikaFileReader;
 import Reika.DragonAPI.Libraries.IO.ReikaFormatHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
 
@@ -55,6 +56,7 @@ public class FileLogger {
 				f.createNewFile();
 				destination = f.getAbsolutePath();
 				this.setOutput(new BufferedWriter(new PrintWriter(f)));
+				this.purgeEmptyFiles(f);
 				return;
 			}
 			catch (IOException e) {
@@ -62,6 +64,15 @@ public class FileLogger {
 			}
 		}
 		throw new RuntimeException("TERRITORYZONE: Could not create log file!");
+	}
+
+	private void purgeEmptyFiles(File f) throws IOException {
+		File[] arr = f.getParentFile().listFiles();
+		for (int i = 0; i < arr.length; i++) {
+			if (ReikaFileReader.isEmpty(arr[i])) {
+				arr[i].delete();
+			}
+		}
 	}
 
 	private void setOutput(BufferedWriter buf) {
