@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ * 
+ * Copyright 2016
+ * 
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
 package Reika.TerritoryZone;
 
 import net.minecraft.block.Block;
@@ -10,6 +19,7 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent.Action;
 import net.minecraftforge.event.world.BlockEvent;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
+import Reika.DragonAPI.Instantiable.Event.FireSpreadEvent;
 import Reika.DragonAPI.Instantiable.Event.PlayerPlaceBlockEvent;
 import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
@@ -217,6 +227,26 @@ public class TerritoryEventHandler {
 						}
 						break;
 					}
+				}
+			}
+		}
+	}
+
+	@SubscribeEvent(priority = EventPriority.LOWEST)
+	public void trackFire(FireSpreadEvent ev) {
+		World world = ev.world;
+		if (!world.isRemote) {
+			for (Territory t : TerritoryLoader.instance.getTerritories()) {
+				if (t.isInZone(world, ev.xCoord, ev.yCoord, ev.zCoord)) {
+					if (t.enforce(Protections.FIRESPREAD) && !MinecraftForge.EVENT_BUS.post(new TerritoryEnforceEvent(t, Protections.FIRESPREAD)))
+						ev.setCanceled(true);
+					if (t.log(Protections.FIRESPREAD)) {
+						TerritoryZone.log(t, "Fire spread @ "+ev.xCoord+", "+ev.yCoord+", "+ev.zCoord);
+						if (t.chatMessages) {
+							t.sendChatToOwner(Protections.FIRESPREAD, null, ev.xCoord, ev.yCoord, ev.zCoord);
+						}
+					}
+					break;
 				}
 			}
 		}

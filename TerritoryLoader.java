@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 import Reika.DragonAPI.IO.ReikaFileReader;
 import Reika.DragonAPI.Instantiable.Data.Immutable.CommutativePair;
@@ -53,7 +54,8 @@ public class TerritoryLoader {
 			ownerMap.addValue(id, t);
 		territories.add(t);
 		MinecraftForge.EVENT_BUS.post(new TerritoryRegisterEvent(t));
-		TerritoryDispatcher.instance.sendTerritoriesToAll();
+		if (MinecraftServer.getServer() != null && MinecraftServer.getServer().isServerRunning())
+			TerritoryDispatcher.instance.sendTerritoriesToAll();
 		if (fileIO) {
 			File f = new File(this.getFullSavePath());
 			ArrayList<String> li = ReikaFileReader.getFileAsLines(f, true);

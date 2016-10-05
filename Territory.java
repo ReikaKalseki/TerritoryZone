@@ -329,7 +329,8 @@ public final class Territory {
 		GUI("Opening GUIs"),
 		ANIMALS("Killing Animals"),
 		PVP("PvP"),
-		ITEMS("Item Pickup");
+		ITEMS("Item Pickup"),
+		FIRESPREAD("Fire Spread");
 
 		public final String desc;
 
@@ -357,13 +358,15 @@ public final class Territory {
 					return "Placed block "+((Block)args[0]).getLocalizedName()+" at "+args[1]+", "+args[2]+", "+args[3];
 				case PVP:
 					return "Attacked the owner '"+((Entity)args[0]).getCommandSenderName()+"'";
+				case FIRESPREAD:
+					return "Fire spread to "+args[0]+", "+args[1]+", "+args[2];
 			}
 			return "";
 		}
 	}
 
 	public void sendChatToOwner(Protections p, EntityPlayer ep, Object... args) {
-		String s = ep.getCommandSenderName()+" "+p.getFormattedNotification(args);
+		String s = (ep != null ? ep.getCommandSenderName() : "")+" "+p.getFormattedNotification(args);
 		for (Owner o : owners) {
 			EntityPlayer epo = ep.worldObj.func_152378_a(o.id);
 			if (epo != null)
