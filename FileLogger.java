@@ -129,6 +129,12 @@ public class FileLogger {
 					}
 				}
 				messages.removeAll(printed);
+				try {
+					Thread.sleep(1000);
+				}
+				catch (InterruptedException e) {
+					//e.printStackTrace();
+				}
 			}
 			try {
 				outputFile.close();

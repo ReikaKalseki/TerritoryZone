@@ -9,6 +9,7 @@
  ******************************************************************************/
 package Reika.TerritoryZone;
 
+import java.io.File;
 import java.net.URL;
 import java.util.Map;
 import java.util.Random;
@@ -151,6 +152,11 @@ public class TerritoryZone extends DragonAPIMod {
 	@Override
 	public String getUpdateCheckURL() {
 		return CommandableUpdateChecker.reikaURL;
+	}
+
+	@Override
+	public File getConfigFolder() {
+		return config.getConfigFolder();
 	}
 
 	public static void log(Territory t, String s) {
