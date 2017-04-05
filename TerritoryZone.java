@@ -39,7 +39,7 @@ import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.relauncher.Side;
 
 
-@Mod( modid = "TerritoryZone", name="TerritoryZone", certificateFingerprint = "@GET_FINGERPRINT@", dependencies="required-after:DragonAPI", acceptableRemoteVersions="*")
+@Mod( modid = "TerritoryZone", name="TerritoryZone", version = "v@MAJOR_VERSION@@MINOR_VERSION@", certificateFingerprint = "@GET_FINGERPRINT@", dependencies="required-after:DragonAPI", acceptableRemoteVersions="*")
 
 public class TerritoryZone extends DragonAPIMod {
 
@@ -47,7 +47,7 @@ public class TerritoryZone extends DragonAPIMod {
 
 	static final Random rand = new Random();
 
-	public static String currentVersion = "v@MAJOR_VERSION@@MINOR_VERSION@";
+	public static final String currentVersion = "v@MAJOR_VERSION@@MINOR_VERSION@";
 
 	@Instance("TerritoryZone")
 	public static TerritoryZone instance = new TerritoryZone();
@@ -64,9 +64,9 @@ public class TerritoryZone extends DragonAPIMod {
 	@NetworkCheckHandler
 	public boolean checkModList(Map<String, String> versions, Side side) {
 		if (side == Side.CLIENT) {
-			String v = versions.get(this.getModContainer().getModId());
+			String v = versions.get("TerritoryZone");
 			if (v != null) {
-				return v.equals(this.getModContainer().getVersion());
+				return v.equals(currentVersion);
 			}
 		}
 		return true;
@@ -122,6 +122,8 @@ public class TerritoryZone extends DragonAPIMod {
 	@EventHandler
 	public void registerCommands(FMLServerStartingEvent evt) {
 		evt.registerServerCommand(new ReloadTerritoriesCommand());
+		if (TerritoryOptions.registerTeleportCommand())
+			evt.registerServerCommand(new TerritoryTeleportCommand());
 	}
 
 	@Override

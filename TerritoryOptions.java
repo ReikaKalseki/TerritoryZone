@@ -21,7 +21,8 @@ public enum TerritoryOptions implements IntegerConfig, BooleanConfig, UserSpecif
 	FADEOUT("Fade Overlay In and Out", false),
 	SMALLOVERLAY("Shrink Overlay", false),
 	FAKEPLAYER("Intercept Fake Players", true),
-	FILELOG("Log to Dedicated File", true);
+	FILELOG("Log to Dedicated File", true),
+	TELECOMMAND("Teleport Command State", 2);
 
 	private String label;
 	private boolean defaultState;
@@ -96,6 +97,14 @@ public enum TerritoryOptions implements IntegerConfig, BooleanConfig, UserSpecif
 			default:
 				return false;
 		}
+	}
+
+	public static boolean registerTeleportCommand() {
+		return TELECOMMAND.getValue() > 0;
+	}
+
+	public static boolean teleportCommandAdminOnly() {
+		return TELECOMMAND.getValue() < 2;
 	}
 
 }
