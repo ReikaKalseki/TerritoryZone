@@ -51,7 +51,7 @@ public class TerritoryDispatcher implements PlayerTracker {
 
 	private void sendTerritory(Territory t, EntityPlayerMP ep) {
 		if (ep == null) {
-			ReikaPacketHelper.sendNBTPacket(TerritoryZone.packetChannel, PacketInfo.TERRITORY.ordinal(), this.getTerritoryData(t), new PacketTarget.AllPlayersTarget());
+			ReikaPacketHelper.sendNBTPacket(TerritoryZone.packetChannel, PacketInfo.TERRITORY.ordinal(), this.getTerritoryData(t), PacketTarget.allPlayers);
 		}
 		else {
 			ReikaPacketHelper.sendNBTPacket(TerritoryZone.packetChannel, PacketInfo.TERRITORY.ordinal(), this.getTerritoryData(t), new PlayerTarget(ep));
