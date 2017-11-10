@@ -136,6 +136,7 @@ public class TerritoryPacketHandler implements PacketHandler {
 					NBT = ((DataPacket)packet).asNBT();
 					break;
 				case STRINGINT:
+				case STRINGINTLOC:
 					stringdata = packet.readString();
 					control = inputStream.readInt();
 					pack = PacketInfo.list[control];

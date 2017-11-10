@@ -75,9 +75,9 @@ public class TerritoryEventHandler {
 		else if (!TerritoryOptions.FAKEPLAYER.getState() && ReikaPlayerAPI.isFake(ep))
 			return;
 		World world = ep.worldObj;
-		int x = ev.x;
-		int y = ev.y;
-		int z = ev.z;
+		int x = ev.xCoord;
+		int y = ev.yCoord;
+		int z = ev.zCoord;
 		if (!world.isRemote) {
 			for (Territory t : TerritoryLoader.instance.getTerritories()) {
 				if (t.isInZone(world, x, y, z) && !t.ownedBy(ep)) {

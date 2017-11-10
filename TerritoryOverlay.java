@@ -76,6 +76,12 @@ public class TerritoryOverlay {
 			double x = ep.posX;
 			double y = ep.posY;
 			double z = ep.posZ;
+
+			ReikaTextureHelper.bindTexture(TerritoryZone.class, "Textures/inworld3g.png");
+
+			v5.startDrawingQuads();
+			v5.setBrightness(240);
+
 			for (Territory t : TerritoryCache.instance.getTerritories()) {
 				if (t.origin.dimensionID == ep.worldObj.provider.dimensionId) {
 					int ox = t.origin.xCoord;
@@ -90,13 +96,8 @@ public class TerritoryOverlay {
 
 					//double d = ReikaMathLibrary.py3d(ox-x, oy-y, oz-z)-t.radius;
 
-					ReikaTextureHelper.bindTexture(TerritoryZone.class, "Textures/inworld3g.png");
-
 					double u = 4;
 					double v = 4;
-
-					v5.startDrawingQuads();
-					v5.setBrightness(240);
 					int a = 255;//d > 0 ? (int)(255-d*2) : 255;
 					v5.setColorRGBA_I(t.color, a);
 					v5.addVertexWithUV(minx, maxy, minz, 0, v);
@@ -118,9 +119,9 @@ public class TerritoryOverlay {
 					v5.addVertexWithUV(maxx, maxy, maxz, u, v);
 					v5.addVertexWithUV(maxx, miny, maxz, u, 0);
 					v5.addVertexWithUV(maxx, miny, minz, 0, 0);
-					v5.draw();
 				}
 			}
+			v5.draw();
 
 			GL11.glPopMatrix();
 			GL11.glPopAttrib();

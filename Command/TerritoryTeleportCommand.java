@@ -7,7 +7,7 @@
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
-package Reika.TerritoryZone;
+package Reika.TerritoryZone.Command;
 
 import java.util.Collection;
 
@@ -16,6 +16,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
 import Reika.DragonAPI.Command.DragonCommandBase;
 import Reika.DragonAPI.Libraries.ReikaEntityHelper;
+import Reika.TerritoryZone.Territory;
+import Reika.TerritoryZone.TerritoryLoader;
+import Reika.TerritoryZone.TerritoryOptions;
 
 
 public class TerritoryTeleportCommand extends DragonCommandBase {
@@ -33,8 +36,15 @@ public class TerritoryTeleportCommand extends DragonCommandBase {
 				this.sendChatToSender(ics, EnumChatFormatting.RED+"You are already in your territory!");
 			}
 			else {
-				if (ep.worldObj.provider.dimensionId != t.origin.dimensionID)
-					ReikaEntityHelper.transferEntityToDimension(ep, t.origin.dimensionID);
+				if (ep.worldObj.provider.dimensionId != t.origin.dimensionID) {
+					if (TerritoryOptions.TELECOMMANDDIM.getState()) {
+						ReikaEntityHelper.transferEntityToDimension(ep, t.origin.dimensionID);
+					}
+					else {
+						this.sendChatToSender(ics, EnumChatFormatting.RED+"You are not in the same dimension as your territory.");
+						return;
+					}
+				}
 				ep.setPositionAndUpdate(t.origin.xCoord, t.origin.yCoord, t.origin.zCoord);
 			}
 		}

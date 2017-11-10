@@ -22,7 +22,8 @@ public enum TerritoryOptions implements IntegerConfig, BooleanConfig, UserSpecif
 	SMALLOVERLAY("Shrink Overlay", false),
 	FAKEPLAYER("Intercept Fake Players", true),
 	FILELOG("Log to Dedicated File", true),
-	TELECOMMAND("Teleport Command State", 2);
+	TELECOMMAND("Teleport Command State", 2),
+	TELECOMMANDDIM("Allow GotoTerritory Command Interdimensionally", false);
 
 	private String label;
 	private boolean defaultState;

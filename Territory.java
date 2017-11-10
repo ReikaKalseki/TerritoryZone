@@ -9,6 +9,8 @@
  ******************************************************************************/
 package Reika.TerritoryZone;
 
+import java.awt.Polygon;
+import java.awt.geom.Area;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -24,6 +26,7 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
+import Reika.DragonAPI.Instantiable.Data.Immutable.BlockBox;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
 import Reika.DragonAPI.Libraries.ReikaNBTHelper.NBTTypes;
 import Reika.DragonAPI.Libraries.IO.ReikaChatHelper;
@@ -89,14 +92,46 @@ public final class Territory {
 	}
 
 	private boolean intersectsComplex(Territory t) {
+		/*
 		WorldLocation loc1 = origin;
 		WorldLocation loc2 = t.origin;
 		Vec3 vec = ReikaVectorHelper.getVec2Pt(loc1.xCoord, loc1.yCoord, loc1.zCoord, loc2.xCoord, loc2.yCoord, loc2.zCoord);
 		double r1 = this.getEdgeDistanceAlong(vec);
 		double r2 = t.getEdgeDistanceAlong(ReikaVectorHelper.getInverseVector(vec));
 		return r1+r2 > vec.lengthVector();
+		 */
+		if (shape == TerritoryShape.SPHERE && t.shape == TerritoryShape.SPHERE) {
+			double d = origin.getDistanceTo(t.origin);
+			return d < Math.max(radius, t.radius);
+		}
+		if (shape == TerritoryShape.CYLINDER && t.shape == TerritoryShape.CYLINDER) {
+			double d = origin.to2D().getDistanceTo(t.origin.to2D());
+			return d < Math.max(radius, t.radius);
+		}
+		Polygon p1 = shape.getFootprintPolygon(origin, radius);
+		Polygon p2 = t.shape.getFootprintPolygon(t.origin, t.radius);
+		Area a = new Area(p1);
+		a.intersect(new Area(p2));
+		if (a.isEmpty())
+			return false;
+		if (t.shape.hasVerticalComponent() && shape.hasVerticalComponent()) {
+			if (origin.yCoord < t.origin.yCoord) {
+				int y1 = origin.yCoord+radius;
+				int y2 = t.origin.yCoord-t.radius;
+				if (y1 < y2)
+					return false;
+			}
+			else {
+				int y1 = t.origin.yCoord+t.radius;
+				int y2 = origin.yCoord-radius;
+				if (y1 < y2)
+					return false;
+			}
+		}
+		return true;
 	}
 
+	@Deprecated
 	private double getEdgeDistanceAlong(Vec3 vec) {
 		switch(shape) {
 			case CUBE:
@@ -142,6 +177,10 @@ public final class Territory {
 		return world.provider.dimensionId == origin.dimensionID && shape.isInZone(origin.xCoord, origin.yCoord, origin.zCoord, x, y, z, radius);
 	}
 
+	public boolean isInFootprint(int x, int z) {
+		return shape.isInZone(origin.xCoord, 0, origin.zCoord, x, 0, z, radius);
+	}
+
 	public boolean ownedBy(EntityPlayer ep) {
 		return owners.contains(new Owner(ep));
 	}
@@ -151,8 +190,12 @@ public final class Territory {
 		return radius+"-"+shape.name()+" @ "+origin.toString()+" {"+enforcementLevel+"/"+loggingLevel+"} "+" by "+owners.toString();
 	}
 
-	public String getBoundsDesc() {
+	public BlockBox getBounds() {
 		return shape.getBounds(origin, radius);
+	}
+
+	public String getBoundsDesc() {
+		return shape.getBoundsAsString(origin, radius);
 	}
 
 	public String getOwnerNames() {
@@ -162,6 +205,14 @@ public final class Territory {
 			sb.append(", ");
 		}
 		return sb.length() > 2 ? sb.substring(0, sb.length()-2) : sb.toString();
+	}
+
+	public ArrayList<String> getOwnerNameList() {
+		ArrayList<String> li = new ArrayList();
+		for (Owner o : owners) {
+			li.add(o.name);
+		}
+		return li;
 	}
 
 	public HashSet<UUID> getOwnerIDs() {
@@ -219,6 +270,10 @@ public final class Territory {
 			desc = s;
 		}
 
+		public boolean hasVerticalComponent() {
+			return this == CUBE || this == SPHERE;
+		}
+
 		private boolean isInZone(double xo, double yo, double zo, double x, double y, double z, int r) {
 			switch(this) {
 				case CUBE:
@@ -234,7 +289,43 @@ public final class Territory {
 			}
 		}
 
-		private String getBounds(WorldLocation loc, int radius) {
+		private Polygon getFootprintPolygon(WorldLocation loc, int radius) {
+			Polygon p = new Polygon();
+			switch(this) {
+				case CUBE:
+				case PRISM:
+					p.addPoint(loc.xCoord-radius, loc.zCoord+radius+1);
+					p.addPoint(loc.xCoord+radius+1, loc.zCoord+radius+1);
+					p.addPoint(loc.xCoord+radius+1, loc.zCoord-radius);
+					p.addPoint(loc.xCoord-radius, loc.zCoord-radius);
+					break;
+				case CYLINDER:
+				case SPHERE:
+					for (double d = 0; d < 360; d += 0.5) {
+						double ang = Math.toRadians(d);
+						int x = loc.xCoord+(int)(radius*Math.cos(ang));
+						int z = loc.zCoord+(int)(radius*Math.sin(ang));
+						p.addPoint(x, z);
+					}
+					break;
+			}
+			return p;
+		}
+
+		private BlockBox getBounds(WorldLocation loc, int radius) {
+			int ox = loc.xCoord;
+			int oy = loc.yCoord;
+			int oz = loc.zCoord;
+			int minx = ox-radius;
+			int miny = this == CYLINDER || this == PRISM ? 0 : oy-radius;
+			int minz = oz-radius;
+			int maxx = ox+radius+1;
+			int maxy = this == CYLINDER || this == PRISM ? Integer.MAX_VALUE : oy+radius+1;
+			int maxz = oz+radius+1;
+			return new BlockBox(minx, miny, minz, maxx, maxy, maxz);
+		}
+
+		private String getBoundsAsString(WorldLocation loc, int radius) {
 			int ox = loc.xCoord;
 			int oy = loc.yCoord;
 			int oz = loc.zCoord;

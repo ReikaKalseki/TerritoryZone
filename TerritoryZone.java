@@ -14,6 +14,7 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Random;
 
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 import Reika.DragonAPI.DragonAPICore;
 import Reika.DragonAPI.DragonOptions;
@@ -24,6 +25,9 @@ import Reika.DragonAPI.Base.DragonAPIMod.LoadProfiler.LoadPhase;
 import Reika.DragonAPI.Instantiable.IO.ControlledConfig;
 import Reika.DragonAPI.Instantiable.IO.ModLogger;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
+import Reika.TerritoryZone.Command.PlotTerritoriesCommand;
+import Reika.TerritoryZone.Command.ReloadTerritoriesCommand;
+import Reika.TerritoryZone.Command.TerritoryTeleportCommand;
 import Reika.TerritoryZone.Event.TerritoryLoggingEvent;
 import Reika.TerritoryZone.Event.TerritoryReloadedEvent;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -115,6 +119,9 @@ public class TerritoryZone extends DragonAPIMod {
 		this.startTiming(LoadPhase.POSTLOAD);
 
 		TerritoryLoader.instance.load();
+
+		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT)
+			ClientCommandHandler.instance.registerCommand(new PlotTerritoriesCommand());
 
 		this.finishTiming();
 	}
