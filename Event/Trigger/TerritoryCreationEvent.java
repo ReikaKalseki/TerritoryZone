@@ -11,7 +11,9 @@ package Reika.TerritoryZone.Event.Trigger;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
+
 import Reika.TerritoryZone.Territory.TerritoryShape;
+
 import cpw.mods.fml.common.eventhandler.Event;
 
 
