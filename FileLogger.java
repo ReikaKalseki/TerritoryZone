@@ -19,8 +19,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import Reika.DragonAPI.DragonAPICore;
 import Reika.DragonAPI.IO.ReikaFileReader;
-import Reika.DragonAPI.Libraries.IO.ReikaFormatHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
+import Reika.DragonAPI.Libraries.MathSci.ReikaDateHelper;
 
 
 public class FileLogger {
@@ -42,7 +42,7 @@ public class FileLogger {
 	}
 
 	private String getFilename() {
-		return "Launch ["+ReikaFormatHelper.getFormattedTimeFilesafe(DragonAPICore.getLaunchTime())+"]";
+		return "Launch ["+ReikaDateHelper.getFormattedTimeFilesafe(DragonAPICore.getLaunchTime())+"]";
 	}
 
 	private void setOutput(String file) {
@@ -96,7 +96,7 @@ public class FileLogger {
 	}
 
 	private String getTimeStamp() {
-		return "["+ReikaFormatHelper.getCurrentTime()+"] ";
+		return "["+ReikaDateHelper.getCurrentTime()+"] ";
 	}
 
 	private class LoggerOut implements Runnable {

@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -109,6 +109,11 @@ public final class Territory {
 			double d = origin.to2D().getDistanceTo(t.origin.to2D());
 			return d < Math.max(radius, t.radius);
 		}
+		if (shape == t.shape && (shape == TerritoryShape.PRISM && shape == TerritoryShape.CUBE)) {
+			AxisAlignedBB box1 = this.getAABB();
+			AxisAlignedBB box2 = this.getAABB();
+			return box1.intersectsWith(box2);
+		}
 		Polygon p1 = shape.getFootprintPolygon(origin, radius);
 		Polygon p2 = t.shape.getFootprintPolygon(t.origin, t.radius);
 		Area a = new Area(p1);
@@ -189,6 +194,10 @@ public final class Territory {
 	@Override
 	public String toString() {
 		return radius+"-"+shape.name()+" @ "+origin.toString()+" {"+enforcementLevel+"/"+loggingLevel+"} "+" by "+owners.toString();
+	}
+
+	public String toSimpleString() {
+		return radius+"-"+shape.name()+" @ "+origin.toString();
 	}
 
 	public BlockBox getBounds() {
@@ -355,6 +364,20 @@ public final class Territory {
 					return "[ERROR]";
 			}
 		}
+
+		public boolean isAtEdge(double xo, double zo, double x, double z, int r) {
+			switch(this) {
+				case CYLINDER:
+				case SPHERE:
+					double dd = ReikaMathLibrary.py3d(x-xo, 0, z-zo);
+					return dd <= r+1 && dd >= r-1;
+				case PRISM:
+				case CUBE:
+					return x == xo-r || x == xo+r+1 || z == zo-r || z == zo+r+1;
+				default:
+					return false;
+			}
+		}
 	}
 
 	public static final class Owner {
@@ -473,14 +496,19 @@ public final class Territory {
 		li.add(origin.yCoord);
 		li.add(origin.zCoord);
 		li.add(radius);
-		li.add(Integer.toHexString(color));
+		li.add("0x"+Integer.toHexString(color));
 		li.add(enforcementLevel);
 		li.add(loggingLevel*(chatMessages ? -1 : 1));
+		li.add(shape.name());
 		for (Owner o : owners) {
 			li.add(o.name);
 			li.add(o.id);
 		}
 		return ReikaStringParser.getDelimited(", ", li);
+	}
+
+	public boolean isAtEdge(int x, int z) {
+		return shape.isAtEdge(origin.xCoord, origin.zCoord, x, z, radius);
 	}
 
 }

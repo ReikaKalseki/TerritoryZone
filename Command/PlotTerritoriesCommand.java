@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -30,7 +30,7 @@ import Reika.DragonAPI.Instantiable.Data.Immutable.BlockBox;
 import Reika.DragonAPI.Libraries.IO.ReikaColorAPI;
 import Reika.DragonAPI.Libraries.MathSci.ReikaMathLibrary;
 import Reika.TerritoryZone.Territory;
-import Reika.TerritoryZone.TerritoryLoader;
+import Reika.TerritoryZone.TerritoryCache;
 
 public class PlotTerritoriesCommand extends DragonClientCommand {
 
@@ -44,7 +44,7 @@ public class PlotTerritoriesCommand extends DragonClientCommand {
 		int maxX = Integer.MIN_VALUE;
 		int maxZ = Integer.MIN_VALUE;
 		Collection<Territory> c = new ArrayList();
-		Collection<Territory> c2 = TerritoryLoader.instance.getTerritories();
+		Collection<Territory> c2 = TerritoryCache.instance.getTerritories();
 		for (Territory t : c2) {
 			if (t.origin.dimensionID == ep.worldObj.provider.dimensionId) {
 				BlockBox box = t.getBounds();
@@ -58,6 +58,12 @@ public class PlotTerritoriesCommand extends DragonClientCommand {
 		if (c.isEmpty()) {
 			this.sendChatToSender(ics, EnumChatFormatting.RED+"No territories to plot.");
 			return;
+		}
+		if (args.length > 0) {
+			minX = Integer.parseInt(args[0]);
+			minZ = Integer.parseInt(args[1]);
+			maxX = Integer.parseInt(args[2]);
+			maxZ = Integer.parseInt(args[3]);
 		}
 		minX = ReikaMathLibrary.roundDownToX(512, minX);
 		minZ = ReikaMathLibrary.roundDownToX(512, minZ);
@@ -75,17 +81,22 @@ public class PlotTerritoriesCommand extends DragonClientCommand {
 		BufferedImage img = new BufferedImage(sizeX+1, sizeZ+1, BufferedImage.TYPE_INT_ARGB);
 		for (int x = minX; x <= maxX; x += scale) {
 			for (int z = minZ; z <= maxZ; z += scale) {
+				int over = 0xffffffff;
 				int i = (x-minX)/scale;
 				int k = (z-minZ)/scale;
 				int b = 255;
 				for (Territory t : c) {
-					if (t.isInFootprint(x, z)) {
+					if (t.isAtEdge(x, z)) {
+						over = 0xff000000 | t.color;
+					}
+					else if (t.isInFootprint(x, z)) {
 						b *= 0.85F;
 					}
 				}
 				if ((x-minX)%1024 == 0 && (z-minZ)%1024 == 0)
-					b &= 0xffff0000;
-				img.setRGB(i, k, 0xff000000 | ReikaColorAPI.GStoHex(b));
+					over = 0xff000000;
+				int clr = over == 0xffffffff ? (0xff000000 | ReikaColorAPI.GStoHex(b)) : over;
+				img.setRGB(i, k, clr);
 			}
 		}
 

@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -24,6 +24,7 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.RenderWorldEvent;
 
+import Reika.DragonAPI.DragonOptions;
 import Reika.DragonAPI.Instantiable.Event.Client.EntityRenderingLoopEvent;
 import Reika.DragonAPI.Libraries.IO.ReikaRenderHelper;
 import Reika.DragonAPI.Libraries.IO.ReikaTextureHelper;
@@ -145,7 +146,7 @@ public class TerritoryOverlay {
 			for (Territory t : TerritoryCache.instance.getTerritories()) {
 				if (t.isInZone(ep.worldObj, ep)) {
 					if (t.ownedBy(ep)) {
-						if (Keyboard.isKeyDown(Keyboard.KEY_TAB)) {
+						if (Keyboard.isKeyDown(DragonOptions.DEBUGKEY.getValue())) {
 							ReikaTextureHelper.bindTexture(TerritoryZone.class, "Textures/HUD.png");
 							GL11.glEnable(GL11.GL_BLEND);
 							GL11.glAlphaFunc(GL11.GL_GREATER, 1/255F);
