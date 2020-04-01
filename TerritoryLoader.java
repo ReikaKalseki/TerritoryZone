@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -70,6 +70,16 @@ public class TerritoryLoader {
 				e.printStackTrace();
 			}
 			ReikaFileReader.writeLinesToFile(f, li, true);
+			try {
+				File f2 = new File(f.getParent(), "BACKUP_"+f.getName());
+				f2.delete();
+				f2.createNewFile();
+				ReikaFileReader.copyFile(f, f2, 512);
+			}
+			catch (IOException e) {
+				TerritoryZone.logger.logError("Could not back up territory file: "+e.toString());
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -120,8 +130,7 @@ public class TerritoryLoader {
 		if (!f.exists())
 			if (!this.createZoneFile(f))
 				return;
-		try {
-			BufferedReader p = ReikaFileReader.getReader(f);
+		try(BufferedReader p = ReikaFileReader.getReader(f)) {
 			String line = "";
 			while (line != null) {
 				line = p.readLine();
@@ -142,7 +151,6 @@ public class TerritoryLoader {
 					}
 				}
 			}
-			p.close();
 		}
 		catch (Exception e) {
 			TerritoryZone.logger.log(e.getMessage()+", and it caused the read to fail!");
