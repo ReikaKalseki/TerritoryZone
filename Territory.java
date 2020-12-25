@@ -445,7 +445,8 @@ public final class Territory {
 		ANIMALS("Killing Animals"),
 		PVP("PvP"),
 		ITEMS("Item Pickup"),
-		FIRESPREAD("Fire Spread");
+		FIRESPREAD("Fire Spread"),
+		RESOURCE("Resources");
 
 		public final String desc;
 

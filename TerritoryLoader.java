@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.UUID;
 
+import org.apache.commons.codec.Charsets;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
@@ -130,7 +132,7 @@ public class TerritoryLoader {
 		if (!f.exists())
 			if (!this.createZoneFile(f))
 				return;
-		try(BufferedReader p = ReikaFileReader.getReader(f)) {
+		try(BufferedReader p = ReikaFileReader.getReader(f, Charsets.UTF_8)) {
 			String line = "";
 			while (line != null) {
 				line = p.readLine();
