@@ -27,8 +27,8 @@ import net.minecraft.util.EnumChatFormatting;
 import Reika.DragonAPI.DragonAPICore;
 import Reika.DragonAPI.Command.DragonClientCommand;
 import Reika.DragonAPI.Instantiable.Data.Immutable.BlockBox;
-import Reika.DragonAPI.Libraries.IO.ReikaColorAPI;
 import Reika.DragonAPI.Libraries.MathSci.ReikaMathLibrary;
+import Reika.DragonAPI.Libraries.Rendering.ReikaColorAPI;
 import Reika.TerritoryZone.Territory;
 import Reika.TerritoryZone.TerritoryCache;
 

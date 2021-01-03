@@ -26,9 +26,9 @@ import net.minecraftforge.client.event.RenderWorldEvent;
 
 import Reika.DragonAPI.DragonOptions;
 import Reika.DragonAPI.Instantiable.Event.Client.EntityRenderingLoopEvent;
-import Reika.DragonAPI.Libraries.IO.ReikaRenderHelper;
 import Reika.DragonAPI.Libraries.IO.ReikaTextureHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaGLHelper.BlendMode;
+import Reika.DragonAPI.Libraries.Rendering.ReikaRenderHelper;
 import Reika.TerritoryZone.Territory.TerritoryShape;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
