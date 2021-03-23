@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -38,23 +38,22 @@ public class FileLogger {
 	}
 
 	public void init() {
-		this.setOutput(DragonAPICore.getMinecraftDirectoryString()+"/logs/TerritoryZone/"+this.getFilename()+".log");
+		this.setOutput(new File(DragonAPICore.getMinecraftDirectory(), "logs/TerritoryZone/"+this.getFilename()+".log"));
 	}
 
 	private String getFilename() {
 		return "Launch ["+ReikaDateHelper.getFormattedTimeFilesafe(DragonAPICore.getLaunchTime())+"]";
 	}
 
-	private void setOutput(String file) {
+	private void setOutput(File f) {
 		for (int i = 0; i < 20; i++) {
 			try {
 				this.flushOutput();
-				File f = new File(file);
 				File par = new File(f.getParent());
 				if (!par.exists())
 					par.mkdirs();
 				f.createNewFile();
-				destination = f.getAbsolutePath();
+				destination = f.getCanonicalPath();
 				this.setOutput(new BufferedWriter(new PrintWriter(f)));
 				this.purgeEmptyFiles(f);
 				return;

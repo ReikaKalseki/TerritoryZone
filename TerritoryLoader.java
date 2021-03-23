@@ -60,7 +60,7 @@ public class TerritoryLoader {
 		if (MinecraftServer.getServer() != null && MinecraftServer.getServer().isServerRunning())
 			TerritoryDispatcher.instance.sendTerritoriesToAll();
 		if (fileIO) {
-			File f = new File(this.getFullSavePath());
+			File f = this.getFullSavePath();
 			ArrayList<String> li = ReikaFileReader.getFileAsLines(f, true);
 			li.add(t.getFileString());
 			try {
@@ -91,7 +91,7 @@ public class TerritoryLoader {
 		territories.remove(t);
 		MinecraftForge.EVENT_BUS.post(new TerritoryUnregisterEvent(t));
 		TerritoryDispatcher.instance.sendTerritoriesToAll();
-		File f = new File(this.getFullSavePath());
+		File f = this.getFullSavePath();
 		ArrayList<String> li = ReikaFileReader.getFileAsLines(f, true);
 		li.remove(t.getFileString());
 		try {
@@ -121,14 +121,14 @@ public class TerritoryLoader {
 		return "TerritoryZone_zones.cfg";
 	}
 
-	public final String getFullSavePath() {
-		return TerritoryZone.config.getConfigFolder().getAbsolutePath()+"/"+this.getSaveFileName();
+	public final File getFullSavePath() {
+		return new File(TerritoryZone.config.getConfigFolder(), this.getSaveFileName());
 	}
 
 	public void load() {
 		territories.clear();
 		TerritoryZone.logger.log("Loading zone config.");
-		File f = new File(this.getFullSavePath());
+		File f = this.getFullSavePath();
 		if (!f.exists())
 			if (!this.createZoneFile(f))
 				return;

@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -23,8 +23,6 @@ import Reika.DragonAPI.Interfaces.PacketHandler;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper.DataPacket;
 import Reika.DragonAPI.Libraries.IO.ReikaPacketHelper.PacketObj;
-import Reika.DragonAPI.Libraries.IO.ReikaSoundHelper;
-import Reika.RotaryCraft.Registry.SoundRegistry;
 import Reika.TerritoryZone.TerritoryDispatcher.PacketInfo;
 
 public class TerritoryPacketHandler implements PacketHandler {
@@ -58,15 +56,6 @@ public class TerritoryPacketHandler implements PacketHandler {
 				case FULLSOUND:
 					break;
 				case SOUND:
-					control = inputStream.readInt();
-					SoundRegistry s = SoundRegistry.soundList[control];
-					double sx = inputStream.readDouble();
-					double sy = inputStream.readDouble();
-					double sz = inputStream.readDouble();
-					float v = inputStream.readFloat();
-					float p = inputStream.readFloat();
-					boolean att = inputStream.readBoolean();
-					ReikaSoundHelper.playClientSound(s, sx, sy, sz, v, p, att);
 					return;
 				case STRING:
 					stringdata = packet.readString();
