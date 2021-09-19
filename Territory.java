@@ -30,6 +30,7 @@ import net.minecraftforge.common.MinecraftForge;
 import Reika.DragonAPI.Instantiable.Data.Immutable.BlockBox;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
 import Reika.DragonAPI.Libraries.ReikaNBTHelper.NBTTypes;
+import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.IO.ReikaChatHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
 import Reika.DragonAPI.Libraries.Java.ReikaStringParser;
@@ -484,7 +485,7 @@ public final class Territory {
 	public void sendChatToOwner(Protections p, EntityPlayer ep, Object... args) {
 		String s = (ep != null ? ep.getCommandSenderName() : "")+" "+p.getFormattedNotification(args);
 		for (Owner o : owners) {
-			EntityPlayer epo = ep.worldObj.func_152378_a(o.id);
+			EntityPlayer epo = ReikaPlayerAPI.getPlayerByIDAnyWorld(o.id);
 			if (epo != null)
 				ReikaChatHelper.sendChatToPlayer(epo, s);
 		}
