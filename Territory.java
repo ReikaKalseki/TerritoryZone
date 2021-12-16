@@ -80,7 +80,7 @@ public final class Territory {
 		TerritoryShape s = y == Integer.MIN_VALUE ? TerritoryShape.PRISM : TerritoryShape.CUBE;
 		return new Territory(new WorldLocation(world, x, s == TerritoryShape.PRISM ? 64 : y, z), r, 0xff0000, enforce, log, s, ReikaJavaLibrary.makeListFrom(new Owner(ep)));
 	}
-
+	/*
 	public long getArea() {
 		return ReikaMathLibrary.longpow(radius*2+1, 2);
 	}
@@ -88,7 +88,7 @@ public final class Territory {
 	public long getVolume() {
 		return ReikaMathLibrary.longpow(radius*2+1, 3);
 	}
-
+	 */
 	public boolean intersects(Territory t) {
 		return origin.dimensionID == t.origin.dimensionID && this.intersectsComplex(t);
 	}
