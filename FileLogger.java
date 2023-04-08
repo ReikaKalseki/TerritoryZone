@@ -12,7 +12,6 @@ package Reika.TerritoryZone;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -47,14 +46,13 @@ public class FileLogger {
 
 	private void setOutput(File f) {
 		for (int i = 0; i < 20; i++) {
-			try {
+			try (BufferedWriter p = ReikaFileReader.getPrintWriterForNewFile(f)) {
 				this.flushOutput();
 				File par = new File(f.getParent());
 				if (!par.exists())
 					par.mkdirs();
-				f.createNewFile();
 				destination = f.getCanonicalPath();
-				this.setOutput(new BufferedWriter(new PrintWriter(f)));
+				this.setOutput(p);
 				this.purgeEmptyFiles(f);
 				return;
 			}

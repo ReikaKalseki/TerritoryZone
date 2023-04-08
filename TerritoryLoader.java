@@ -12,7 +12,6 @@ package Reika.TerritoryZone;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,6 +25,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 
 import Reika.DragonAPI.IO.ReikaFileReader;
+import Reika.DragonAPI.IO.ReikaFileReader.SimpleLineWriter;
 import Reika.DragonAPI.Instantiable.Data.Immutable.CommutativePair;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
 import Reika.DragonAPI.Instantiable.Data.Maps.MultiMap;
@@ -175,9 +175,7 @@ public class TerritoryLoader {
 	}
 
 	private boolean createZoneFile(File f) {
-		try {
-			f.createNewFile();
-			PrintWriter p = new PrintWriter(f);
+		try (SimpleLineWriter p = ReikaFileReader.getPrintWriterForNewFile(f)) {
 			this.writeCommentLine(p, "-------------------------------");
 			this.writeCommentLine(p, " TerritoryZone Territory Loader ");
 			this.writeCommentLine(p, "-------------------------------");
@@ -209,7 +207,6 @@ public class TerritoryLoader {
 			this.writeCommentLine(p, "Lines beginning with '//' are comments and will be ignored, as will empty lines. Spaces are stripped.");
 			this.writeCommentLine(p, "====================================================================================");
 			p.append("\n");
-			p.close();
 			return true;
 		}
 		catch (Exception e) {
@@ -252,8 +249,8 @@ public class TerritoryLoader {
 		return c;
 	}
 
-	private static void writeCommentLine(PrintWriter p, String line) {
-		p.append("// "+line+"\n");
+	private static void writeCommentLine(SimpleLineWriter p, String line) {
+		p.println("// "+line+"\n");
 	}
 
 }

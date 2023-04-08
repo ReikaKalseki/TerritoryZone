@@ -450,15 +450,17 @@ public final class Territory {
 		RESOURCE("Resources");
 
 		public final String desc;
+		public final int flag;
 
 		public static Protections[] list = values();
 
 		private Protections(String s) {
 			desc = s;
+			flag = 1 << this.ordinal();
 		}
 
 		protected boolean enabled(int flags) {
-			return (flags & (1 << this.ordinal())) != 0;
+			return (flags & flag) != 0;
 		}
 
 		private String getFormattedNotification(Object... args) {
@@ -477,6 +479,8 @@ public final class Territory {
 					return "Attacked the owner '"+((Entity)args[0]).getCommandSenderName()+"'";
 				case FIRESPREAD:
 					return "Fire spread to "+args[0]+", "+args[1]+", "+args[2];
+				case RESOURCE:
+					return "Harvested resource "+args[0]+" @ "+args[1]+", "+args[2]+", "+args[3];
 			}
 			return "";
 		}
