@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -24,7 +24,6 @@ import Reika.DragonAPI.Instantiable.Event.FireSpreadEvent;
 import Reika.DragonAPI.Instantiable.Event.PlayerPlaceBlockEvent;
 import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
-import Reika.TerritoryZone.Territory.Owner;
 import Reika.TerritoryZone.Territory.Protections;
 import Reika.TerritoryZone.Event.TerritoryEnforceEvent;
 import Reika.TerritoryZone.Event.Trigger.TerritoryCreationEvent;
@@ -51,13 +50,13 @@ public class TerritoryEventHandler {
 
 	@SubscribeEvent
 	public void triggerCreate(TerritoryCreationEvent.CreateTwoPoints evt) {
-		Territory t = Territory.getFromTwoPoints(evt.world, evt.x1, evt.y1, evt.z1, evt.x2, evt.y2, evt.z2, evt.player, evt.enforcement, evt.logging);
+		Territory t = Territory.getFromTwoPoints(evt.id, evt.world, evt.x1, evt.y1, evt.z1, evt.x2, evt.y2, evt.z2, evt.player);
 		TerritoryLoader.instance.addTerritory(t);
 	}
 
 	@SubscribeEvent
 	public void triggerCreate(TerritoryCreationEvent.CreateDirect evt) {
-		Territory t = new Territory(new WorldLocation(evt.world, evt.x, evt.y, evt.z), evt.radius, 0xff0000, evt.enforcement, evt.logging, evt.shape, ReikaJavaLibrary.makeListFrom(new Owner(evt.player)));
+		Territory t = new Territory(evt.id, new WorldLocation(evt.world, evt.x, evt.y, evt.z), evt.radius, 0xff0000, evt.shape).addOwner(evt.player);
 		TerritoryLoader.instance.addTerritory(t);
 	}
 
@@ -87,7 +86,7 @@ public class TerritoryEventHandler {
 						ev.setCanceled(true);
 					if (t.log(Protections.PLACE)) {
 						TerritoryZone.log(t, "Player "+ep.getCommandSenderName()+" placed a block "+ev.block.getLocalizedName()+" at "+x+", "+y+", "+z+" in "+t);
-						if (t.chatMessages) {
+						if (t.chat(Protections.PLACE)) {
 							t.sendChatToOwner(Protections.PLACE, ep, ev.block, x, y, z);
 						}
 					}
@@ -119,7 +118,7 @@ public class TerritoryEventHandler {
 							ev.setCanceled(true);
 						if (t.log(Protections.GUI))
 							TerritoryZone.log(t, "Player "+ep.getCommandSenderName()+" used GUI at "+x+", "+y+", "+z+" in "+t);
-						if (t.chatMessages) {
+						if (t.chat(Protections.GUI)) {
 							t.sendChatToOwner(Protections.GUI, ep, x, y, z);
 						}
 						break;
@@ -151,7 +150,7 @@ public class TerritoryEventHandler {
 					if (t.log(Protections.BREAK)) {
 						String b = Block.blockRegistry.getNameForObject(ev.block);
 						TerritoryZone.log(t, "Player "+ep.getCommandSenderName()+" broke "+b+":"+ev.blockMetadata+" at "+x+", "+y+", "+z+" in "+t);
-						if (t.chatMessages) {
+						if (t.chat(Protections.BREAK)) {
 							t.sendChatToOwner(Protections.BREAK, ep, ev.block, x, y, z);
 						}
 					}
@@ -175,7 +174,7 @@ public class TerritoryEventHandler {
 							ev.setCanceled(true);
 						if (t.log(Protections.ANIMALS)) {
 							TerritoryZone.log(t, "Player "+ep.getCommandSenderName()+" attacked "+ev.entityLiving+" in "+t);
-							if (t.chatMessages) {
+							if (t.chat(Protections.ANIMALS)) {
 								t.sendChatToOwner(Protections.ANIMALS, ep, ev.entityLiving);
 							}
 						}
@@ -199,7 +198,7 @@ public class TerritoryEventHandler {
 						ev.setCanceled(true);
 					if (t.log(Protections.ITEMS)) {
 						TerritoryZone.log(t, "Player "+ep.getCommandSenderName()+" tried picking up "+ev.pickedUp+" in "+t);
-						if (t.chatMessages) {
+						if (t.chat(Protections.ITEMS)) {
 							t.sendChatToOwner(Protections.ITEMS, ep, ev.pickedUp.getEntityItem(), ev.pickedUp.posX, ev.pickedUp.posY, ev.pickedUp.posZ);
 						}
 					}
@@ -223,7 +222,7 @@ public class TerritoryEventHandler {
 							ev.setCanceled(true);
 						if (t.log(Protections.PVP)) {
 							TerritoryZone.log(t, "Player "+ep.getCommandSenderName()+" tried attacking "+ev.entityLiving.getCommandSenderName()+" in "+t);
-							if (t.chatMessages) {
+							if (t.chat(Protections.PVP)) {
 								t.sendChatToOwner(Protections.PVP, ep, ev.entityLiving);
 							}
 						}
@@ -244,7 +243,7 @@ public class TerritoryEventHandler {
 						ev.setCanceled(true);
 					if (t.log(Protections.FIRESPREAD)) {
 						TerritoryZone.log(t, "Fire spread @ "+ev.xCoord+", "+ev.yCoord+", "+ev.zCoord);
-						if (t.chatMessages) {
+						if (t.chat(Protections.FIRESPREAD)) {
 							t.sendChatToOwner(Protections.FIRESPREAD, null, ev.xCoord, ev.yCoord, ev.zCoord);
 						}
 					}

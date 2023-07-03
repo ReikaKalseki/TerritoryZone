@@ -110,7 +110,7 @@ public class TerritoryZone extends DragonAPIMod {
 			MinecraftForge.EVENT_BUS.register(TerritoryOverlay.instance);
 		}
 
-		FileLogger.instance.init();
+		TerritoryLogger.instance.init();
 
 		this.finishTiming();
 	}
@@ -178,7 +178,7 @@ public class TerritoryZone extends DragonAPIMod {
 	public static void log(Territory t, String s) {
 		MinecraftForge.EVENT_BUS.post(new TerritoryLoggingEvent(t, s));
 		if (TerritoryOptions.FILELOG.getState()) {
-			FileLogger.instance.log(s);
+			TerritoryLogger.instance.log(s);
 		}
 		else {
 			logger.log(s);

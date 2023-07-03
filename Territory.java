@@ -13,6 +13,7 @@ import java.awt.Polygon;
 import java.awt.geom.Area;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -29,48 +30,43 @@ import net.minecraftforge.common.MinecraftForge;
 
 import Reika.DragonAPI.Instantiable.Data.Immutable.BlockBox;
 import Reika.DragonAPI.Instantiable.Data.Immutable.WorldLocation;
+import Reika.DragonAPI.Instantiable.IO.LuaBlock;
+import Reika.DragonAPI.Instantiable.IO.LuaBlock.LuaBlockDatabase;
+import Reika.DragonAPI.Libraries.ReikaNBTHelper;
 import Reika.DragonAPI.Libraries.ReikaNBTHelper.NBTTypes;
 import Reika.DragonAPI.Libraries.ReikaPlayerAPI;
 import Reika.DragonAPI.Libraries.IO.ReikaChatHelper;
 import Reika.DragonAPI.Libraries.Java.ReikaJavaLibrary;
-import Reika.DragonAPI.Libraries.Java.ReikaStringParser;
 import Reika.DragonAPI.Libraries.MathSci.ReikaMathLibrary;
 import Reika.DragonAPI.Libraries.MathSci.ReikaVectorHelper;
 import Reika.TerritoryZone.Event.TerritoryCreateEvent;
 
 public final class Territory {
 
+	public final String id;
 	public final WorldLocation origin;
 	public final int radius;
 	public final int color;
 	private final Collection<Owner> owners = new HashSet();
 	public final TerritoryShape shape;
-	public final int enforcementLevel;
-	public final int loggingLevel;
-	public final boolean chatMessages;
+	private final EnumSet<Protections> logging = ReikaJavaLibrary.getConditionalEnumSet(Protections.class, p -> p.logByDefault());
+	private final EnumSet<Protections> chat = ReikaJavaLibrary.getConditionalEnumSet(Protections.class, p -> p.chatByDefault());
+	private final EnumSet<Protections> protection = ReikaJavaLibrary.getConditionalEnumSet(Protections.class, p -> p.protectByDefault());
 
 	//public Territory(int dim, int x, int y, int z, int r, String name, UUID uid, TerritoryShape sh) {
 	//	this(new WorldLocation(dim, x, y, z), r, name, uid, sh);
 	//}
 
-	public Territory(WorldLocation loc, int r, int clr, int enf, int log, TerritoryShape sh) {
-		this(loc, r, clr, enf, log, sh, null);
-	}
-
-	public Territory(WorldLocation loc, int r, int clr, int enf, int log, TerritoryShape sh, Collection<Owner> c) {
+	public Territory(String id, WorldLocation loc, int r, int clr, TerritoryShape sh) {
+		this.id = id;
 		origin = loc;
 		radius = r;
 		shape = sh;
 		color = clr;
-		enforcementLevel = enf;
-		chatMessages = log < 0;
-		loggingLevel = Math.abs(log);
-		if (c != null)
-			owners.addAll(c);
 		MinecraftForge.EVENT_BUS.post(new TerritoryCreateEvent(this));
 	}
 
-	public static Territory getFromTwoPoints(World world, int x1, int y1, int z1, int x2, int y2, int z2, EntityPlayer ep, int enforce, int log) {
+	public static Territory getFromTwoPoints(String id, World world, int x1, int y1, int z1, int x2, int y2, int z2, EntityPlayer ep) {
 		int dx = x2-x1;
 		int dz = z2-z1;
 		int r = (dx+dz)/2;
@@ -78,7 +74,36 @@ public final class Territory {
 		int y = y1 == Integer.MIN_VALUE ? Integer.MIN_VALUE : (y1+y2)/2;
 		int z = (x1+z2)/2;
 		TerritoryShape s = y == Integer.MIN_VALUE ? TerritoryShape.PRISM : TerritoryShape.CUBE;
-		return new Territory(new WorldLocation(world, x, s == TerritoryShape.PRISM ? 64 : y, z), r, 0xff0000, enforce, log, s, ReikaJavaLibrary.makeListFrom(new Owner(ep)));
+		return new Territory(id, new WorldLocation(world, x, s == TerritoryShape.PRISM ? 64 : y, z), r, 0xff0000, s).addOwner(ep);
+	}
+
+	public Territory addOwner(EntityPlayer ep) {
+		return this.addOwner(new Owner(ep));
+	}
+
+	public Territory addOwner(UUID id, String name) {
+		return this.addOwner(new Owner(name, id));
+	}
+
+	public Territory addOwner(Owner o) {
+		owners.add(o);
+		return this;
+	}
+
+	public Territory setProtectionLevel(Protections p, boolean log, boolean chat, boolean protect) {
+		if (log)
+			logging.add(p);
+		else
+			logging.remove(p);
+		if (chat)
+			this.chat.add(p);
+		else
+			this.chat.remove(p);
+		if (protect)
+			protection.add(p);
+		else
+			protection.remove(p);
+		return this;
 	}
 	/*
 	public long getArea() {
@@ -194,7 +219,7 @@ public final class Territory {
 
 	@Override
 	public String toString() {
-		return radius+"-"+shape.name()+" @ "+origin.toString()+" {"+enforcementLevel+"/"+loggingLevel+"} "+" by "+owners.toString();
+		return radius+"-"+shape.name()+" @ "+origin.toString()+" {"+logging+"/"+protection+"} "+" by "+owners.toString();
 	}
 
 	public String toSimpleString() {
@@ -239,8 +264,12 @@ public final class Territory {
 		nbt.setInteger("r", radius);
 		nbt.setInteger("color", color);
 		nbt.setInteger("shape", shape.ordinal());
-		nbt.setInteger("enforce", enforcementLevel);
-		nbt.setInteger("logging", loggingLevel);
+		nbt.setString("id", id);
+
+		nbt.setTag("logging", ReikaNBTHelper.getTagForObject(logging, ReikaNBTHelper.getEnumConverter(Protections.class)));
+		nbt.setTag("chat", ReikaNBTHelper.getTagForObject(chat, ReikaNBTHelper.getEnumConverter(Protections.class)));
+		nbt.setTag("protection", ReikaNBTHelper.getTagForObject(protection, ReikaNBTHelper.getEnumConverter(Protections.class)));
+
 		NBTTagList li = new NBTTagList();
 		for (Owner o : owners) {
 			NBTTagCompound tag = new NBTTagCompound();
@@ -254,11 +283,17 @@ public final class Territory {
 		WorldLocation loc = WorldLocation.readFromNBT("loc", nbt);
 		int radius = nbt.getInteger("r");
 		int clr = nbt.getInteger("color");
-		int enf = nbt.getInteger("enforce");
-		int log = nbt.getInteger("logging");
 		TerritoryShape sh = TerritoryShape.list[nbt.getInteger("shape")];
 		NBTTagList li = nbt.getTagList("owners", NBTTypes.COMPOUND.ID);
-		Territory t = new Territory(loc, radius, clr, enf, log, sh);
+		Territory t = new Territory(nbt.getString("id"), loc, radius, clr, sh);
+
+		t.logging.clear();
+		t.chat.clear();
+		t.protection.clear();
+		t.logging.addAll((Collection<Protections>)ReikaNBTHelper.getValue(nbt.getTag("logging"), ReikaNBTHelper.getEnumConverter(Protections.class)));
+		t.chat.addAll((Collection<Protections>)ReikaNBTHelper.getValue(nbt.getTag("chat"), ReikaNBTHelper.getEnumConverter(Protections.class)));
+		t.protection.addAll((Collection<Protections>)ReikaNBTHelper.getValue(nbt.getTag("protection"), ReikaNBTHelper.getEnumConverter(Protections.class)));
+
 		for (Object o : li.tagList) {
 			NBTTagCompound dat = (NBTTagCompound)o;
 			Owner own = Owner.readFromNBT(dat);
@@ -268,7 +303,7 @@ public final class Territory {
 	}
 
 	public static enum TerritoryShape {
-		CUBE("Cubical Zone"),
+		CUBE("Cubic Zone"),
 		PRISM("Full-height square perimeter"),
 		SPHERE("Spherical Zone"),
 		CYLINDER("Full-height circular perimeter");
@@ -432,11 +467,15 @@ public final class Territory {
 	}
 
 	public boolean enforce(Protections lvl) {
-		return lvl.enabled(enforcementLevel);
+		return protection.contains(lvl);
 	}
 
 	public boolean log(Protections lvl) {
-		return lvl.enabled(loggingLevel);
+		return logging.contains(lvl);
+	}
+
+	public boolean chat(Protections lvl) {
+		return chat.contains(lvl);
 	}
 
 	public static enum Protections {
@@ -450,17 +489,11 @@ public final class Territory {
 		RESOURCE("Resources");
 
 		public final String desc;
-		public final int flag;
 
 		public static Protections[] list = values();
 
 		private Protections(String s) {
 			desc = s;
-			flag = 1 << this.ordinal();
-		}
-
-		protected boolean enabled(int flags) {
-			return (flags & flag) != 0;
 		}
 
 		private String getFormattedNotification(Object... args) {
@@ -484,6 +517,37 @@ public final class Territory {
 			}
 			return "";
 		}
+
+		public boolean logByDefault() {
+			switch(this) {
+				case FIRESPREAD:
+					return false;
+				default:
+					return true;
+			}
+		}
+
+		public boolean chatByDefault() {
+			switch(this) {
+				case ITEMS:
+				case PVP:
+				case FIRESPREAD:
+					return false;
+				default:
+					return true;
+			}
+		}
+
+		public boolean protectByDefault() {
+			switch(this) {
+				case BREAK:
+				case PLACE:
+				case RESOURCE:
+					return true;
+				default:
+					return false;
+			}
+		}
 	}
 
 	public void sendChatToOwner(Protections p, EntityPlayer ep, Object... args) {
@@ -495,26 +559,66 @@ public final class Territory {
 		}
 	}
 
-	public String getFileString() {
-		ArrayList li = new ArrayList();
-		li.add(origin.dimensionID);
-		li.add(origin.xCoord);
-		li.add(origin.yCoord);
-		li.add(origin.zCoord);
-		li.add(radius);
-		li.add("0x"+Integer.toHexString(color));
-		li.add(enforcementLevel);
-		li.add(loggingLevel*(chatMessages ? -1 : 1));
-		li.add(shape.name());
-		for (Owner o : owners) {
-			li.add(o.name);
-			li.add(o.id);
-		}
-		return ReikaStringParser.getDelimited(", ", li);
-	}
-
 	public boolean isAtEdge(int x, int z) {
 		return shape.isAtEdge(origin.xCoord, origin.zCoord, x, z, radius);
+	}
+
+	@Override
+	public int hashCode() {
+		return (origin.hashCode() ^ radius) + owners.hashCode() * (1+shape.ordinal());
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof Territory))
+			return false;
+		Territory t = (Territory)o;
+		return t.origin.equals(origin) && t.radius == radius && t.shape == shape && t.owners.equals(owners);
+	}
+
+	public TerritoryLuaBlock toLuaBlock(LuaBlockDatabase db) {
+		TerritoryLuaBlock bk = new TerritoryLuaBlock(id, null, db);
+		bk.putData("type", id);
+		bk.putData("dimension", origin.dimensionID);
+
+		TerritoryLuaBlock pos = new TerritoryLuaBlock("position", bk, db);
+		pos.putData("x", origin.xCoord);
+		pos.putData("y", origin.yCoord);
+		pos.putData("z", origin.zCoord);
+		pos.setOrdering(null);
+
+		bk.putData("color", "0x"+Integer.toHexString(color));
+		bk.putData("radius", radius);
+		bk.putData("shape", shape.name());
+
+		TerritoryLuaBlock owners = new TerritoryLuaBlock("owners", bk, db);
+		for (Owner o : this.owners) {
+			TerritoryLuaBlock owner = new TerritoryLuaBlock("{", owners, db);
+			owner.putData("uuid", o.id.toString());
+			owner.putData("username", o.name);
+		}
+		owners.setOrdering(null);
+
+		TerritoryLuaBlock settings = new TerritoryLuaBlock("settings", bk, db);
+		for (Protections p : Protections.list) {
+			TerritoryLuaBlock prot = new TerritoryLuaBlock(p.name(), settings, db);
+			prot.putData("log", this.log(p));
+			prot.putData("chat", this.chat(p));
+			prot.putData("protect", this.enforce(p));
+		}
+		settings.setOrdering((s1, s2) -> Protections.valueOf(s1).compareTo(Protections.valueOf(s2)));
+		bk.setOrdering(null);
+		return bk;
+	}
+
+	public static class TerritoryLuaBlock extends LuaBlock {
+
+		protected TerritoryLuaBlock(String n, LuaBlock parent, LuaBlockDatabase db) {
+			super(n, parent, db);
+			requiredElements.add("position");
+			requiredElements.add("owners");
+		}
+
 	}
 
 }
