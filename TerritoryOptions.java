@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -22,7 +22,7 @@ public enum TerritoryOptions implements IntegerConfig, BooleanConfig, UserSpecif
 	SMALLOVERLAY("Shrink Overlay", false),
 	FAKEPLAYER("Intercept Fake Players", true),
 	FILELOG("Log to Dedicated File", true),
-	TELECOMMAND("Teleport Command State", 2),
+	TELECOMMAND("Teleport Command State", 2), //0 = Disable the command, 1 = Admins only, 2 = Anyone can use
 	TELECOMMANDDIM("Allow GotoTerritory Command Interdimensionally", false);
 
 	private String label;

@@ -95,6 +95,7 @@ public class TerritoryLoader {
 	}
 
 	public void load() {
+		territories.clear();
 		territoryData.clear();
 		TerritoryZone.logger.log("Loading zone config.");
 		File f = this.getFullSavePath();
@@ -105,8 +106,10 @@ public class TerritoryLoader {
 				for (LuaBlock b : root.getChildren()) {
 					try {
 						String type = b.getString("type");
-						if (type.equalsIgnoreCase("example"))
+						if (type.equalsIgnoreCase("example") || b.getBoolean("isInheritOnly")) {
+							TerritoryZone.logger.log("Skipping zone entry '"+type+"' - it is marked for inheritance only.");
 							continue;
+						}
 						TerritoryZone.logger.log("Parsing zone entry '"+type+"'");
 						territoryData.addBlock(type, b);
 						territories.add(this.parseTerritoryEntry(type, b));
